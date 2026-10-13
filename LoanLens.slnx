@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LoanLens.Api/LoanLens.Api.csproj" />
+    <Project Path="src/LoanLens.Application/LoanLens.Application.csproj" />
+    <Project Path="src/LoanLens.Domain/LoanLens.Domain.csproj" />
+    <Project Path="src/LoanLens.Infrastructure/LoanLens.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LoanLens.Domain.Tests/LoanLens.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
