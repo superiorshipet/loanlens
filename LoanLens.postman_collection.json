@@ -39,7 +39,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Ahmed Mahmoud\",\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+          "raw": "{\n  \"customerName\": \"Ahmed Mahmoud\",\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000,\n  \"monteCarloOptions\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 15.0,\n    \"customEmergencyAnnualProbability\": 10.0,\n    \"customEmergencyCost\": 25000\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
@@ -167,7 +167,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 22000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 40000,\n    \"dependentsCount\": 1,\n    \"age\": 31,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 1000\n  },\n  \"loan\": {\n    \"principal\": 90000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"iterations\": 5000\n}"
+          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 22000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 40000,\n    \"dependentsCount\": 1,\n    \"age\": 31,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 1000\n  },\n  \"loan\": {\n    \"principal\": 90000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"iterations\": 5000,\n  \"options\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 18.0,\n    \"customEmergencyAnnualProbability\": 12.0,\n    \"customEmergencyCost\": 20000\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/monte-carlo?lang={{lang}}",
@@ -180,7 +180,7 @@
             }
           ]
         },
-        "description": "Runs 5,000 stochastic life simulations with Gaussian income volatility and Poisson emergency events."
+        "description": "Runs 5,000 stochastic life simulations with Gaussian income volatility and Poisson emergency events. Supports tunable custom volatility, shock probability, and emergency cost."
       }
     },
     {
@@ -199,7 +199,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Kareem Adel\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+          "raw": "{\n  \"customerName\": \"Kareem Adel\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/export-pdf?lang={{lang}}",

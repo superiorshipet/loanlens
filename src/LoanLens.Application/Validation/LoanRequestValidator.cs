@@ -33,6 +33,12 @@ public static class LoanRequestValidator
         if (loan.AdminFeePercentage < 0 || loan.AdminFeePercentage > 25)
             AddError(errors, "loan.adminFeePercentage", isAr ? "نسبة الرسوم الإدارية يجب أن تكون بين 0% و 25%." : "Admin fee percentage must be between 0% and 25%.");
 
+        if (loan.EarlyRepaymentFeePercentage < 0 || loan.EarlyRepaymentFeePercentage > 15)
+            AddError(errors, "loan.earlyRepaymentFeePercentage", isAr ? "نسبة غرامة السداد المعجل يجب أن تكون بين 0% و 15%." : "Early repayment fee percentage must be between 0% and 15%.");
+
+        if (loan.LatePaymentPenaltyPercentage < 0 || loan.LatePaymentPenaltyPercentage > 25)
+            AddError(errors, "loan.latePaymentPenaltyPercentage", isAr ? "نسبة غرامة التأخير يجب أن تكون بين 0% و 25%." : "Late payment penalty percentage must be between 0% and 25%.");
+
         if (!Enum.IsDefined(typeof(InterestCalculationMethod), loan.CalculationMethod))
             AddError(errors, "loan.calculationMethod", isAr ? "طريقة احتساب الفائدة غير صالحة (1 = Reducing, 2 = Flat)." : "Invalid interest calculation method (1 = Reducing, 2 = Flat).");
 
@@ -91,6 +97,30 @@ public static class LoanRequestValidator
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }
 
+    public static Dictionary<string, string[]> Validate(UserProfileDto? profile, LoanInputDto? loan, MonteCarloOptionsDto? options, int iterations = 5000, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var isAr = LoanLensLanguage.IsArabic(language);
+
+        var baseErrors = Validate(profile, loan, language);
+        foreach (var (key, msgs) in baseErrors)
+        {
+            errors[key] = msgs.ToList();
+        }
+
+        if (iterations <= 0 || iterations > 50000)
+        {
+            AddError(errors, "iterations", isAr ? "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة." : "Monte Carlo iterations must be between 100 and 50,000.");
+        }
+
+        if (options != null)
+        {
+            ValidateMonteCarloOptions(options, errors, isAr);
+        }
+
+        return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
     public static Dictionary<string, string[]> Validate(LoanAnalysisRequestDto? request, string language = "en")
     {
         var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -114,7 +144,35 @@ public static class LoanRequestValidator
             AddError(errors, "monteCarloIterations", isAr ? "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة." : "Monte Carlo iterations must be between 100 and 50,000.");
         }
 
+        if (request.MonteCarloOptions != null)
+        {
+            ValidateMonteCarloOptions(request.MonteCarloOptions, errors, isAr);
+        }
+
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
+    public static void ValidateMonteCarloOptions(MonteCarloOptionsDto options, Dictionary<string, List<string>> errors, bool isAr)
+    {
+        if (options.Iterations <= 0 || options.Iterations > 50000)
+        {
+            AddError(errors, "monteCarloOptions.iterations", isAr ? "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة." : "Monte Carlo iterations must be between 100 and 50,000.");
+        }
+
+        if (options.CustomIncomeVolatilityPercentage.HasValue && (options.CustomIncomeVolatilityPercentage.Value < 0 || options.CustomIncomeVolatilityPercentage.Value > 100))
+        {
+            AddError(errors, "monteCarloOptions.customIncomeVolatilityPercentage", isAr ? "نسبة تذبذب الدخل المخصصة يجب أن تكون بين 0% و 100%." : "Custom income volatility percentage must be between 0% and 100%.");
+        }
+
+        if (options.CustomEmergencyAnnualProbability.HasValue && (options.CustomEmergencyAnnualProbability.Value < 0 || options.CustomEmergencyAnnualProbability.Value > 100))
+        {
+            AddError(errors, "monteCarloOptions.customEmergencyAnnualProbability", isAr ? "نسبة احتمالية حدوث طارئ سنوي يجب أن تكون بين 0% و 100%." : "Custom emergency annual probability must be between 0% and 100%.");
+        }
+
+        if (options.CustomEmergencyCost.HasValue && options.CustomEmergencyCost.Value < 0)
+        {
+            AddError(errors, "monteCarloOptions.customEmergencyCost", isAr ? "تكلفة الطوارئ المخصصة لا يمكن أن تكون سالبة." : "Custom emergency cost cannot be negative.");
+        }
     }
 
     private static void AddError(Dictionary<string, List<string>> dict, string key, string message)

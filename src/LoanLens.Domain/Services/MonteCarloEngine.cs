@@ -10,10 +10,14 @@ public class MonteCarloEngine : IMonteCarloEngine
         FinancialProfile profile, 
         LoanParameters loan, 
         decimal monthlyInstallment, 
-        int iterations = 5000)
+        int iterations = 5000,
+        MonteCarloSimulationOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(loan);
+
+        if (options != null && options.Iterations > 0)
+            iterations = options.Iterations;
         if (iterations <= 0) iterations = 5000;
 
         var stopwatch = Stopwatch.StartNew();
@@ -24,8 +28,8 @@ public class MonteCarloEngine : IMonteCarloEngine
         decimal otherInstallments = profile.CurrentMonthlyInstallments;
         decimal initialSavings = profile.Savings;
 
-        // Volatility depending on income stability
-        double incomeVolatilitySigma = profile.Stability switch
+        // Volatility depending on income stability or user customization
+        double incomeVolatilitySigma = options?.CustomIncomeVolatilitySigma ?? profile.Stability switch
         {
             IncomeStability.StableEmployed => 0.04,  // 4% variance
             IncomeStability.Freelance => 0.18,       // 18% variance
@@ -34,8 +38,14 @@ public class MonteCarloEngine : IMonteCarloEngine
         };
 
         // Random emergency frequencies
-        double minorShockProbability = 0.08; // 8% monthly chance
-        double majorShockProbability = 0.015; // 1.5% monthly chance
+        double minorShockProbability = options?.CustomEmergencyProbability.HasValue == true
+            ? Math.Clamp((double)options.CustomEmergencyProbability.Value * 0.7, 0.01, 0.50)
+            : 0.08;
+        double majorShockProbability = options?.CustomEmergencyProbability.HasValue == true
+            ? Math.Clamp((double)options.CustomEmergencyProbability.Value * 0.3, 0.005, 0.25)
+            : 0.015;
+
+        decimal customEmergencyCost = options?.CustomEmergencyCost ?? 0m;
 
         int defaultCount = 0;
         var defaultMonthsCounter = new int[tenor + 1];
@@ -74,10 +84,18 @@ public class MonteCarloEngine : IMonteCarloEngine
                     // Random major disruption (medical, car breakdown, job gap)
                     if (rand.NextDouble() < majorShockProbability)
                     {
-                        if (profile.HasHealthInsurance)
+                        if (customEmergencyCost > 0m)
+                        {
+                            totalOutflow += customEmergencyCost;
+                        }
+                        else if (profile.HasHealthInsurance)
+                        {
                             totalOutflow += (decimal)(rand.Next(5000, 15000));
+                        }
                         else
+                        {
                             totalOutflow += (decimal)(rand.Next(15000, 45000));
+                        }
                     }
 
                     decimal netCashflow = simulatedIncome - totalOutflow;
@@ -99,15 +117,14 @@ public class MonteCarloEngine : IMonteCarloEngine
                 }
 
                 endingSavingsArray[i] = currentSavings;
-
                 return localState;
             },
             localState =>
             {
-                Interlocked.Add(ref defaultCount, localState.DefaultsCount);
-                Interlocked.Add(ref totalDefaultMonthSum, localState.DefaultSum);
                 lock (defaultMonthsCounter)
                 {
+                    defaultCount += localState.DefaultsCount;
+                    totalDefaultMonthSum += localState.DefaultSum;
                     for (int m = 1; m <= tenor; m++)
                     {
                         defaultMonthsCounter[m] += localState.LocalDefaultsPerMonth[m];
@@ -117,48 +134,40 @@ public class MonteCarloEngine : IMonteCarloEngine
 
         stopwatch.Stop();
 
-        // Calculate statistics
+        // Calculate distribution and percentiles
         Array.Sort(endingSavingsArray);
+        decimal p5 = endingSavingsArray[(int)(iterations * 0.05)];
+        decimal p50 = endingSavingsArray[(int)(iterations * 0.50)];
+        decimal p95 = endingSavingsArray[(int)(iterations * 0.95)];
 
-        decimal defaultProbability = Math.Round(((decimal)defaultCount / iterations) * 100m, 2);
-        
-        int? peakMonth = null;
-        int maxDefaultsInMonth = 0;
-        var distributionDict = new Dictionary<int, int>(tenor);
+        decimal defaultProb = Math.Round((decimal)defaultCount / iterations * 100m, 2);
+        double avgDefaultMonth = defaultCount > 0 ? Math.Round((double)totalDefaultMonthSum / defaultCount, 1) : 0.0;
+
+        int? peakRiskMonth = null;
+        int maxDefaults = 0;
+        var monthDistribution = new Dictionary<int, int>();
 
         for (int m = 1; m <= tenor; m++)
         {
             var count = defaultMonthsCounter[m];
-            distributionDict[m] = count;
-            if (count > maxDefaultsInMonth && count > 0)
+            monthDistribution[m] = count;
+            if (count > maxDefaults && count > 0)
             {
-                maxDefaultsInMonth = count;
-                peakMonth = m;
+                maxDefaults = count;
+                peakRiskMonth = m;
             }
         }
-
-        double avgDefaultMonth = defaultCount > 0 
-            ? Math.Round((double)totalDefaultMonthSum / defaultCount, 1) 
-            : 0.0;
-
-        int idx5 = (int)(iterations * 0.05);
-        int idx50 = (int)(iterations * 0.50);
-        int idx95 = (int)(iterations * 0.95);
-
-        decimal worstCaseSavings = Math.Round(endingSavingsArray[Math.Clamp(idx5, 0, iterations - 1)], 2);
-        decimal medianSavings = Math.Round(endingSavingsArray[Math.Clamp(idx50, 0, iterations - 1)], 2);
-        decimal bestCaseSavings = Math.Round(endingSavingsArray[Math.Clamp(idx95, 0, iterations - 1)], 2);
 
         return new MonteCarloSimulationResult(
             TotalIterations: iterations,
             DefaultCount: defaultCount,
-            DefaultProbabilityPercentage: defaultProbability,
-            PeakRiskMonth: peakMonth,
+            DefaultProbabilityPercentage: defaultProb,
+            PeakRiskMonth: peakRiskMonth,
             AverageDefaultMonth: avgDefaultMonth,
-            MedianEndingSavings: medianSavings,
-            WorstCase5thPercentileSavings: worstCaseSavings,
-            BestCase95thPercentileSavings: bestCaseSavings,
-            DefaultsByMonthDistribution: distributionDict,
+            MedianEndingSavings: Math.Round(p50, 2),
+            WorstCase5thPercentileSavings: Math.Round(p5, 2),
+            BestCase95thPercentileSavings: Math.Round(p95, 2),
+            DefaultsByMonthDistribution: monthDistribution,
             ElapsedMilliseconds: stopwatch.ElapsedMilliseconds
         );
     }

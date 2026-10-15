@@ -14,7 +14,7 @@ public record LoanProduct(
     string Id,
     string ProviderName,
     string ProductName,
-    string Category, // e.g. "Commercial Bank", "Consumer Finance", "Microfinance"
+    string Category,
     decimal MinPrincipal,
     decimal MaxPrincipal,
     int MinTenorMonths,
@@ -24,7 +24,9 @@ public record LoanProduct(
     decimal AdminFeePercentage,
     decimal MinMonthlyIncomeRequired,
     int MaxAgeAllowed,
-    string FeaturesSummary);
+    string FeaturesSummary,
+    decimal EarlySettlementFeePercentage = 3.0m,
+    decimal LatePenaltyPercentage = 2.0m);
 
 public record AlternativeComparison(
     LoanProduct Product,
@@ -41,7 +43,9 @@ public record RepaymentStrategyOption(
     decimal MonthlyPayment,
     decimal TotalInterestPaid,
     decimal InterestSavedComparedToStandard,
-    int TotalMonthsToPayoff);
+    int TotalMonthsToPayoff,
+    decimal EarlySettlementFeePaid = 0m,
+    decimal NetFinancialBenefit = 0m);
 
 public record FinalAdvisorDecision(
     RecommendationVerdict Verdict,

@@ -118,7 +118,13 @@ public class LoanPdfReportService : IPdfReportService
                 column.Item().Element(c => ComposeAlternativesTable(c, report, isAr, currency));
             }
 
-            // 6. Actionable Advice
+            // 6. Repayment Strategies Comparison Table
+            if (report.Recommendation.Strategies.Count > 0)
+            {
+                column.Item().Element(c => ComposeRepaymentStrategiesTable(c, report, isAr, currency));
+            }
+
+            // 7. Actionable Advice
             column.Item().Element(c => ComposeAdviceSection(c, report, isAr));
         });
     }
@@ -303,6 +309,54 @@ public class LoanPdfReportService : IPdfReportService
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.MonthlyInstallment:N0} {currency}").FontSize(8.5f);
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.EffectiveAprPercentage:0.0}%").FontSize(8.5f);
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(diffText).Bold().FontColor(diffColor).FontSize(8.5f);
+                }
+            });
+        });
+    }
+
+    private static void ComposeRepaymentStrategiesTable(IContainer container, ComprehensiveLoanReportDto report, bool isAr, string currency)
+    {
+        container.Column(col =>
+        {
+            col.Item().Text(isAr ? "خيارات واستراتيجيات السداد البديلة (سداد معجل، تسريع، تأجيل)" : "Alternative Repayment & Payoff Strategies").FontSize(11).Bold().FontColor(Colors.Blue.Darken3);
+
+            col.Item().PaddingTop(4).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(3.2f); // Strategy Name
+                    columns.RelativeColumn(1.6f); // Monthly Payment
+                    columns.RelativeColumn(1.2f); // Payoff Mos
+                    columns.RelativeColumn(1.7f); // Early Fee
+                    columns.RelativeColumn(2.0f); // Net Benefit
+                });
+
+                table.Header(header =>
+                {
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "الخطة" : "Strategy").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "القسط" : "Monthly").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "المدة" : "Term").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "غرامة السداد" : "Early Fee").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "صافي الأثر" : "Net Benefit").Bold().FontSize(8.5f);
+                });
+
+                foreach (var strat in report.Recommendation.Strategies)
+                {
+                    var benefitColor = strat.NetFinancialBenefit > 0 ? Colors.Green.Darken2 : (strat.NetFinancialBenefit < 0 ? Colors.Red.Darken2 : Colors.Grey.Darken2);
+                    var benefitText = strat.NetFinancialBenefit > 0
+                        ? (isAr ? $"+{strat.NetFinancialBenefit:N0} {currency}" : $"+{strat.NetFinancialBenefit:N0} {currency}")
+                        : (strat.NetFinancialBenefit < 0 
+                            ? (isAr ? $"{strat.NetFinancialBenefit:N0} {currency}" : $"{strat.NetFinancialBenefit:N0} {currency}")
+                            : (isAr ? "الأساس" : "Baseline"));
+
+                    var termText = isAr ? $"{strat.TotalMonthsToPayoff} شهر" : $"{strat.TotalMonthsToPayoff} Mos";
+                    var feeText = strat.EarlySettlementFeePaid > 0 ? $"{strat.EarlySettlementFeePaid:N0} {currency}" : (isAr ? "لا يوجد" : "None");
+
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(strat.StrategyName).FontSize(8.5f);
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{strat.MonthlyPayment:N0} {currency}").FontSize(8.5f);
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(termText).FontSize(8.5f);
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(feeText).FontSize(8.5f);
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(benefitText).Bold().FontColor(benefitColor).FontSize(8.5f);
                 }
             });
         });

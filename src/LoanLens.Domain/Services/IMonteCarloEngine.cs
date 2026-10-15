@@ -8,5 +8,6 @@ public interface IMonteCarloEngine
         FinancialProfile profile, 
         LoanParameters loan, 
         decimal monthlyInstallment, 
-        int iterations = 5000);
+        int iterations = 5000,
+        MonteCarloSimulationOptions? options = null);
 }

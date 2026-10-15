@@ -73,4 +73,48 @@ public class DefensiveInputTests
 
         Assert.Empty(errors);
     }
+
+    [Fact]
+    public void Validator_RejectsNegativeBankingFees_AndInvalidMonteCarloOptions()
+    {
+        var profileDto = new UserProfileDto(
+            MonthlyIncome: 20000m,
+            Stability: IncomeStability.StableEmployed,
+            FixedMonthlyExpenses: 7000m,
+            CurrentMonthlyInstallments: 0m,
+            Savings: 35000m,
+            DependentsCount: 1,
+            Age: 30
+        );
+
+        var loanDto = new LoanInputDto(
+            Principal: 100000m,
+            TenorMonths: 36,
+            AnnualInterestRatePercentage: 22m,
+            EarlyRepaymentFeePercentage: -3.0m,
+            LatePaymentPenaltyPercentage: -2.0m
+        );
+
+        var mcOptions = new MonteCarloOptionsDto(
+            Iterations: -500,
+            CustomIncomeVolatilityPercentage: -10m,
+            CustomEmergencyAnnualProbability: 150m,
+            CustomEmergencyCost: -5000m
+        );
+
+        // Test in English
+        var errorsEn = LoanRequestValidator.Validate(profileDto, loanDto, mcOptions, iterations: -500, language: "en");
+        Assert.True(errorsEn.ContainsKey("loan.earlyRepaymentFeePercentage"));
+        Assert.True(errorsEn.ContainsKey("loan.latePaymentPenaltyPercentage"));
+        Assert.True(errorsEn.ContainsKey("iterations"));
+        Assert.True(errorsEn.ContainsKey("monteCarloOptions.customIncomeVolatilityPercentage"));
+        Assert.True(errorsEn.ContainsKey("monteCarloOptions.customEmergencyAnnualProbability"));
+        Assert.True(errorsEn.ContainsKey("monteCarloOptions.customEmergencyCost"));
+
+        // Test in Arabic
+        var errorsAr = LoanRequestValidator.Validate(profileDto, loanDto, mcOptions, iterations: -500, language: "ar");
+        Assert.Contains("غرامة السداد المعجل", errorsAr["loan.earlyRepaymentFeePercentage"][0]);
+        Assert.Contains("غرامة التأخير", errorsAr["loan.latePaymentPenaltyPercentage"][0]);
+        Assert.Contains("لا يمكن أن تكون سالبة", errorsAr["monteCarloOptions.customEmergencyCost"][0]);
+    }
 }

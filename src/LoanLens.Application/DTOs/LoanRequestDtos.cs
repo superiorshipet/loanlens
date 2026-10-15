@@ -33,7 +33,9 @@ public record LoanInputDto(
     decimal AnnualInterestRatePercentage,
     InterestCalculationMethod CalculationMethod = InterestCalculationMethod.Reducing,
     InterestRateType RateType = InterestRateType.Fixed,
-    decimal AdminFeePercentage = 0m)
+    decimal AdminFeePercentage = 0m,
+    decimal EarlyRepaymentFeePercentage = 3.0m,
+    decimal LatePaymentPenaltyPercentage = 2.0m)
 {
     public LoanParameters ToDomain() => new(
         Principal: Principal,
@@ -41,7 +43,23 @@ public record LoanInputDto(
         AnnualInterestRatePercentage: AnnualInterestRatePercentage,
         CalculationMethod: CalculationMethod,
         RateType: RateType,
-        AdminFeePercentage: AdminFeePercentage
+        AdminFeePercentage: AdminFeePercentage,
+        EarlyRepaymentFeePercentage: EarlyRepaymentFeePercentage,
+        LatePaymentPenaltyPercentage: LatePaymentPenaltyPercentage
+    );
+}
+
+public record MonteCarloOptionsDto(
+    int Iterations = 5000,
+    decimal? CustomIncomeVolatilityPercentage = null,
+    decimal? CustomEmergencyAnnualProbability = null,
+    decimal? CustomEmergencyCost = null)
+{
+    public MonteCarloSimulationOptions ToDomain() => new(
+        Iterations: Iterations,
+        CustomIncomeVolatilitySigma: CustomIncomeVolatilityPercentage.HasValue ? (double)(CustomIncomeVolatilityPercentage.Value / 100m) : null,
+        CustomEmergencyProbability: CustomEmergencyAnnualProbability.HasValue ? (double)(CustomEmergencyAnnualProbability.Value / 100m) : null,
+        CustomEmergencyCost: CustomEmergencyCost
     );
 }
 
@@ -50,4 +68,5 @@ public record LoanAnalysisRequestDto(
     LoanInputDto Loan,
     int MonteCarloIterations = 5000,
     string? CustomerName = null,
-    string? Language = null);
+    string? Language = null,
+    MonteCarloOptionsDto? MonteCarloOptions = null);

@@ -145,15 +145,11 @@ loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, HttpContext 
 loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
     var lang = ResolveLanguage(context);
-    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan, lang);
-    if (request is not null && (request.Iterations <= 0 || request.Iterations > 50000))
-    {
-        errors["iterations"] = [LoanLensLanguage.IsArabic(lang) ? "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة." : "Monte Carlo iterations must be between 100 and 50,000."];
-    }
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan, request?.Options, request?.Iterations ?? 5000, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
-    var result = service.RunMonteCarlo(request!.Profile, request.Loan, request.Iterations);
+    var result = service.RunMonteCarlo(request!.Profile, request.Loan, request.Iterations, request.Options);
     return Results.Ok(result);
 })
 .WithName("RunMonteCarlo")
@@ -296,4 +292,4 @@ static string ResolveLanguage(HttpContext context, string? explicitLang = null)
 
 // DTO helpers for API bindings
 public record AffordabilityRequestDto(UserProfileDto Profile, LoanInputDto Loan);
-public record MonteCarloRequestDto(UserProfileDto Profile, LoanInputDto Loan, int Iterations = 5000);
+public record MonteCarloRequestDto(UserProfileDto Profile, LoanInputDto Loan, int Iterations = 5000, MonteCarloOptionsDto? Options = null);
