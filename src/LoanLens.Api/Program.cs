@@ -1,6 +1,7 @@
 using LoanLens.Application;
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Services;
+using LoanLens.Application.Validation;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -90,6 +91,10 @@ var loanGroup = app.MapGroup("/api/loans")
 // 1. Calculate Amortization Schedule
 loanGroup.MapPost("/calculate", (LoanInputDto request, ILoanAdvisorService service) =>
 {
+    var errors = LoanRequestValidator.Validate(request);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات القرض غير صالحة");
+
     var schedule = service.CalculateSchedule(request);
     return Results.Ok(schedule);
 })
@@ -100,7 +105,11 @@ loanGroup.MapPost("/calculate", (LoanInputDto request, ILoanAdvisorService servi
 // 2. Analyze Affordability (DTI & Emergency Runway)
 loanGroup.MapPost("/affordability", (AffordabilityRequestDto request, ILoanAdvisorService service) =>
 {
-    var metrics = service.AnalyzeAffordability(request.Profile, request.Loan);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var metrics = service.AnalyzeAffordability(request!.Profile, request.Loan);
     return Results.Ok(metrics);
 })
 .WithName("AnalyzeAffordability")
@@ -110,7 +119,11 @@ loanGroup.MapPost("/affordability", (AffordabilityRequestDto request, ILoanAdvis
 // 3. Run Deterministic Stress Testing Shocks
 loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, ILoanAdvisorService service) =>
 {
-    var summary = service.RunStressTest(request.Profile, request.Loan);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var summary = service.RunStressTest(request!.Profile, request.Loan);
     return Results.Ok(summary);
 })
 .WithName("RunStressTest")
@@ -120,7 +133,15 @@ loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, ILoanAdvisor
 // 4. Run Stochastic Monte Carlo Simulation
 loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, ILoanAdvisorService service) =>
 {
-    var result = service.RunMonteCarlo(request.Profile, request.Loan, request.Iterations);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    if (request is not null && (request.Iterations <= 0 || request.Iterations > 50000))
+    {
+        errors["iterations"] = ["عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة."];
+    }
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var result = service.RunMonteCarlo(request!.Profile, request.Loan, request.Iterations);
     return Results.Ok(result);
 })
 .WithName("RunMonteCarlo")
@@ -130,7 +151,11 @@ loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, ILoanAdvisorSer
 // 5. Generate 360° Comprehensive Advisor Report
 loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, ILoanAdvisorService service) =>
 {
-    var report = service.GenerateFullReport(request);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var report = service.GenerateFullReport(request!);
     return Results.Ok(report);
 })
 .WithName("GenerateFullAnalysis")
