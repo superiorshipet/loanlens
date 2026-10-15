@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using LoanLens.Application;
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
@@ -9,6 +11,12 @@ using LoanLens.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure JSON serialization: allow reading numbers from strings seamlessly
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+});
 
 // Register Clean Architecture Application & Infrastructure Services
 builder.Services.AddApplication();
@@ -47,18 +55,57 @@ app.Use(async (context, next) =>
     catch (Exception ex)
     {
         context.Response.ContentType = "application/problem+json";
-        var statusCode = ex is ArgumentException or FormatException ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
+
+        var isClientBadRequest = ex is BadHttpRequestException 
+                               or JsonException 
+                               or OverflowException 
+                               or ArgumentException 
+                               or FormatException
+                               || ex.InnerException is JsonException 
+                               or OverflowException 
+                               or FormatException;
+
+        var statusCode = isClientBadRequest ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
+        if (ex is BadHttpRequestException badHttp)
+        {
+            statusCode = badHttp.StatusCode;
+        }
+
         context.Response.StatusCode = statusCode;
 
         var isAr = ResolveLanguage(context) == LoanLensLanguage.Arabic;
+        string title;
+        string detail;
+
+        if (statusCode == StatusCodes.Status400BadRequest)
+        {
+            if (ex is BadHttpRequestException or JsonException || ex.InnerException is JsonException or OverflowException)
+            {
+                title = isAr ? "صيغة البيانات أو كود الـ JSON غير صالح" : "Malformed JSON or invalid request payload";
+                detail = isAr 
+                    ? "تعذر قراءة جسم الطلب (JSON). يرجى التأكد من صحة بناء الـ JSON ونوع الحقول (أرقام وليس نصوص أو قيم تفيض عن سعة المتغير)."
+                    : $"Failed to parse request body as JSON: {ex.Message}";
+            }
+            else
+            {
+                title = isAr ? "بيانات المدخلات غير صحيحة" : "Invalid request parameters";
+                detail = ex.Message;
+            }
+        }
+        else
+        {
+            title = isAr ? "خطأ غير متوقع في الخادم" : "An unexpected server error occurred";
+            detail = ex.Message;
+        }
+
         var problem = new
         {
-            type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-            title = statusCode == 400 
-                ? (isAr ? "بيانات المدخلات غير صحيحة" : "Invalid request parameters") 
-                : (isAr ? "خطأ غير متوقع في الخادم" : "An unexpected server error occurred"),
+            type = statusCode == 400 
+                ? "https://tools.ietf.org/html/rfc7231#section-6.5.1" 
+                : "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+            title,
             status = statusCode,
-            detail = ex.Message,
+            detail,
             instance = context.Request.Path.Value
         };
 
