@@ -294,8 +294,8 @@ public class RecommendationEngine : IRecommendationEngine
         {
             verdict = RecommendationVerdict.AvoidLoan;
             headline = isAr
-                ? "قرار حاسم: لا تأخذ هذا القرض في الوقت الحالي (Avoid Loan)"
-                : "Decisive Verdict: Avoid taking this loan at this time (Avoid Loan)";
+                ? "قرار حاسم: تجنب أخذ هذا القرض في الوقت الحالي"
+                : "Decisive Verdict: Avoid taking this loan at this time";
             reasoning = isAr
                 ? "البيانات المالية تؤكد أن هذا القرض سيؤدي إلى عجز مالي شهري أو تجاوز خطير للحد الأقصى للمديونية (50% DTI). السداد سيتعثر حتماً عند أول ظرف طارئ."
                 : "Financial assessment indicates this loan will cause monthly cash deficits or breach regulatory debt limits (50% DTI). Repayment will likely fail under minor shocks.";
@@ -334,8 +334,8 @@ public class RecommendationEngine : IRecommendationEngine
         {
             verdict = RecommendationVerdict.AdjustTerms;
             headline = isAr
-                ? "توصية: عدّل شروط القرض لخفض القسط الشهري (Adjust Terms)"
-                : "Recommendation: Adjust loan terms to lower monthly installments (Adjust Terms)";
+                ? "توصية: عدّل شروط القرض لخفض القسط الشهري"
+                : "Recommendation: Adjust loan terms to lower monthly installments";
             reasoning = isAr
                 ? "القرض الحالي يضعك في منطقة الخطر العالية لأن القسط يبتلع أكثر من 40% من دخلك. يمكنك أخذ القرض بأمان إذا قمت بمد فترة السداد أو تقليل المبلغ."
                 : "The current loan places you in a high-risk zone as the installment absorbs over 40% of income. You can safely proceed by extending tenor or reducing principal.";
@@ -358,8 +358,8 @@ public class RecommendationEngine : IRecommendationEngine
         {
             verdict = RecommendationVerdict.TakeLoan;
             headline = isAr
-                ? "قرار إيجابي: توكل على الله، القرض مدروس وآمن (Take Loan)"
-                : "Positive Verdict: Proceed with confidence, loan is sound and affordable (Take Loan)";
+                ? "قرار إيجابي: القرض مدروس ومناسب لوضعك المالي"
+                : "Positive Verdict: Proceed with confidence, loan is sound and affordable";
             reasoning = isAr
                 ? "نسبة عبء الدين (DTI) في النطاق الآمن جداً، والسيولة النقدية لديك توفر وسادة حماية مريحة ضد تقلبات الدخل ومصاريف الطوارئ."
                 : "Your debt-to-income ratio (DTI) is well within safe thresholds, and your cash reserves provide a comfortable safety cushion against unexpected shocks.";

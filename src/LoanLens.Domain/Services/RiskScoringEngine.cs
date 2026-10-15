@@ -195,7 +195,7 @@ public class RiskScoringEngine : IRiskScoringEngine
         if (totalScore <= 25m)
         {
             category = RiskLevel.Safe;
-            label = isAr ? "آمن (Safe)" : "Safe";
+            label = isAr ? "آمن" : "Safe";
             summary = isAr
                 ? "القرض آمن تماماً ويتناسب مع دخلك ومدخراتك دون تشكيل أي تهديد لسلامتك المالية."
                 : "The loan is fully secure and comfortably fits within your cash flow and savings without threatening your financial stability.";
@@ -203,7 +203,7 @@ public class RiskScoringEngine : IRiskScoringEngine
         else if (totalScore <= 50m)
         {
             category = RiskLevel.Moderate;
-            label = isAr ? "متوسط (Moderate)" : "Moderate";
+            label = isAr ? "متوسط / معتدل" : "Moderate";
             summary = isAr
                 ? "القرض مقبول ولكن يتطلب الحذر ومراقبة المصاريف الشهرية لتجنب أي ضغط غير متوقع."
                 : "The loan is manageable but requires disciplined expense tracking to avoid unexpected pressure.";
@@ -211,7 +211,7 @@ public class RiskScoringEngine : IRiskScoringEngine
         else if (totalScore <= 75m)
         {
             category = RiskLevel.High;
-            label = isAr ? "عالي المخاطر (High Risk)" : "High Risk";
+            label = isAr ? "مرتفع الخطورة" : "High Risk";
             summary = isAr
                 ? "مخاطرة مرتفعة: أي طارئ بسيط (مرض، تأخر راتب) قد يدفعك للتعثر أو الاستدانة لسداد القسط."
                 : "High risk: Any unexpected shock (health emergency, delayed salary) will likely trigger payment delinquency.";
@@ -219,7 +219,7 @@ public class RiskScoringEngine : IRiskScoringEngine
         else
         {
             category = RiskLevel.Critical;
-            label = isAr ? "خطر وشيك (Critical)" : "Critical";
+            label = isAr ? "حرج / غير آمن" : "Critical Risk";
             summary = isAr
                 ? "خطر تعثر وشيك: هذا القرض غير مناسب على الإطلاق لبياناتك المالية الحالية وينذر بأزمة ديون خانقة."
                 : "Imminent default risk: This loan is unsustainable given your current financial profile and will trigger a debt crisis.";

@@ -478,7 +478,7 @@ loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, HttpContext con
 // 5. Generate 360° Comprehensive Advisor Report
 loanGroup.MapPost("/full-analysis", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
-    var lang = ResolveLanguage(context, request?.Language);
+    var lang = ResolveLanguage(context, request?.Language, request?.CustomerName, request?.CustomQuestion);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
@@ -509,7 +509,7 @@ loanGroup.MapGet("/catalog", (HttpContext context, ILoanAdvisorService service) 
 // 7. Export Comprehensive PDF Report
 loanGroup.MapPost("/export-pdf", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IPdfReportService pdfService, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
-    var lang = ResolveLanguage(context, request?.Language);
+    var lang = ResolveLanguage(context, request?.Language, request?.CustomerName, request?.CustomQuestion);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
@@ -531,7 +531,7 @@ loanGroup.MapPost("/export-pdf", async (LoanAnalysisRequestDto request, HttpCont
 // 8. Save Evaluated Scenario
 loanGroup.MapPost("/save-scenario", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IScenarioRepository repo, CancellationToken ct) =>
 {
-    var lang = ResolveLanguage(context, request?.Language);
+    var lang = ResolveLanguage(context, request?.Language, request?.CustomerName, request?.CustomQuestion);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
@@ -603,7 +603,7 @@ loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, bool includeAi, Htt
 // 12. Compare Two Loan Scenarios Side-by-Side (Arbitrary Request Payloads)
 loanGroup.MapPost("/compare", (ScenarioComparisonRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var lang = ResolveLanguage(context, request?.Language);
+    var lang = ResolveLanguage(context, request?.Language, request?.ScenarioAName, request?.ScenarioBName);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات المقارنة غير صالحة" : "Invalid comparison input parameters");
@@ -685,7 +685,7 @@ loanGroup.MapPost("/rate-sensitivity", (RateSensitivityRequestDto request, HttpC
 // 17. Export Amortization Schedule to Excel (.xlsx)
 loanGroup.MapPost("/export-excel", (ExportExcelRequestDto request, HttpContext context, ILoanAdvisorService service, IExcelExportService excelService) =>
 {
-    var lang = ResolveLanguage(context, request?.Language);
+    var lang = ResolveLanguage(context, request?.Language, request?.CustomerName);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات تصدير الإكسيل غير صالحة" : "Invalid excel export parameters");
@@ -718,7 +718,7 @@ loanGroup.MapGet("/scenarios/{id:guid}/excel", async (Guid id, HttpContext conte
 // 19. Generate Personalized AI Narrative Financial Advice
 loanGroup.MapPost("/ai-advice", async (AiAdviceRequestDto request, HttpContext context, ILoanAdvisorService service, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
-    var lang = ResolveLanguage(context, request?.AnalysisRequest?.Language);
+    var lang = ResolveLanguage(context, request?.AnalysisRequest?.Language, request?.CustomQuestion, request?.AnalysisRequest?.CustomerName);
     var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الاستشارة غير صالحة" : "Invalid advice request parameters");
@@ -734,7 +734,7 @@ loanGroup.MapPost("/ai-advice", async (AiAdviceRequestDto request, HttpContext c
 // 20. Generate AI Narrative Advice for Saved Scenario
 loanGroup.MapGet("/scenarios/{id:guid}/ai-advice", async (Guid id, string? question, HttpContext context, IScenarioRepository repo, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
-    var lang = ResolveLanguage(context);
+    var lang = ResolveLanguage(context, null, question);
     var report = await repo.GetScenarioByIdAsync(id, ct);
     if (report is null)
         return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
@@ -755,15 +755,28 @@ using (var scope = app.Services.CreateScope())
     
 app.Run();
 
-// Language resolution helper: supports explicit param, ?lang= query string, Accept-Language header, default English
-static string ResolveLanguage(HttpContext context, string? explicitLang = null)
+// Language resolution helper: supports explicit param, ?lang= query string, Accept-Language header, intelligent Arabic text detection
+static string ResolveLanguage(HttpContext context, string? explicitLang = null, params string?[] textHints)
 {
-    if (!string.IsNullOrWhiteSpace(explicitLang))
-        return LoanLensLanguage.IsArabic(explicitLang) ? LoanLensLanguage.Arabic : LoanLensLanguage.English;
-
+    // 1. Explicit query parameter ?lang=
     if (context.Request.Query.TryGetValue("lang", out var queryLang) && !string.IsNullOrWhiteSpace(queryLang))
         return LoanLensLanguage.IsArabic(queryLang.ToString()) ? LoanLensLanguage.Arabic : LoanLensLanguage.English;
 
+    // 2. Explicit language parameter in payload
+    if (!string.IsNullOrWhiteSpace(explicitLang))
+        return LoanLensLanguage.IsArabic(explicitLang) ? LoanLensLanguage.Arabic : LoanLensLanguage.English;
+
+    // 3. Intelligent auto-detection from text hints (Arabic question, Arabic customer name, etc.)
+    if (textHints != null)
+    {
+        foreach (var hint in textHints)
+        {
+            if (LoanLensLanguage.ContainsArabic(hint))
+                return LoanLensLanguage.Arabic;
+        }
+    }
+
+    // 4. Accept-Language header
     var acceptLang = context.Request.Headers.AcceptLanguage.ToString();
     if (!string.IsNullOrWhiteSpace(acceptLang) && LoanLensLanguage.IsArabic(acceptLang))
         return LoanLensLanguage.Arabic;

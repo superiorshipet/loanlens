@@ -180,7 +180,7 @@ public class InfrastructureAndExportTests
         var enRisk = riskEngine.Evaluate(profile, affordability, enStress, mc, "en");
         var arRisk = riskEngine.Evaluate(profile, affordability, arStress, mc, "ar");
         Assert.Equal("Safe", enRisk.RiskLabel);
-        Assert.Equal("آمن (Safe)", arRisk.RiskLabel);
+        Assert.Equal("آمن", arRisk.RiskLabel);
 
         // 4. Validator
         var enErrors = LoanRequestValidator.Validate((LoanInputDto?)null, "en");

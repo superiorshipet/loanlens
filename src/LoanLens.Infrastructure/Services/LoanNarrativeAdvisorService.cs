@@ -38,7 +38,9 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
     {
         ArgumentNullException.ThrowIfNull(report);
 
-        var isAr = LoanLensLanguage.IsArabic(language);
+        var isAr = LoanLensLanguage.IsArabic(language)
+                || LoanLensLanguage.ContainsArabic(customQuestion)
+                || LoanLensLanguage.ContainsArabic(customerName);
         var geminiKey = ResolveGeminiKey();
         var groqKey = ResolveGroqKey();
 
@@ -237,24 +239,82 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         bool isAr)
     {
         string systemPrompt;
+        var clientLabel = !string.IsNullOrWhiteSpace(customerName) ? customerName : (isAr ? "العميل" : "Valued Client");
+        var sb = new StringBuilder();
+
         if (isAr)
         {
             systemPrompt =
                 "أنت خبير ومستشار مالي مصرفي معتمد رفيع المستوى متخصص في السوق المصرفي المصري وضوابط البنك المركزي المصري (CBE).\n" +
                 "مهمتك صياغة استشارة مالية إنسانية، واقعية، شديدة الشفافية والعمق بناءً على التقرير المالي الرقمي المقدم.\n" +
-                "قواعد صارمة:\n" +
-                "1. لا تقم أبداً بحساب أو تغيير أي أرقام؛ الأرقام المقدمة محسوبة بدقة برمجية قطعية، دورك هو شرح دلالتها ومخاطرها.\n" +
-                "2. تحدث بلهجة مهنية محترمة، واضحة ومباشرة تخاطب العميل باهتمام حقيقي لمصلحته المالية.\n" +
-                "3. راعي معايير البنك المركزي (حد الـ 50% DTI)، وأثر القروض متناقصة الفائدة مقارنة بالفائدة الثابتة، وغرامات السداد المعجل.\n" +
-                "4. أجب دائماً بهيئة JSON صالح تماماً يحتوي حصراً على الحقول التالية:\n" +
+                "قواعد صارمة وإلزامية:\n" +
+                "1. اللغة: يجب أن تكون الإجابة بجميع حقولها بنسبة 100% باللغة العربية الفصحى السليمة، وممنوع منعاً باتاً استخدام أو خلط أي كلمات أو مصطلحات أو حروف باللغة الإنجليزية في أي حقل.\n" +
+                "2. إذا طرح العميل سؤالاً محدداً، يجب الإجابة عليه بوضوح وتفصيل ودقة مصرفية داخل الملخص وخطة العمل.\n" +
+                "3. لا تقم أبداً بحساب أو تغيير أي أرقام؛ الأرقام المقدمة محسوبة بدقة برمجية قطعية، دورك هو شرح دلالتها ومخاطرها.\n" +
+                "4. راعي معايير البنك المركزي المصري (حد الـ 50% DTI)، وأثر القروض متناقصة الفائدة مقارنة بالفائدة الثابتة، وغرامات السداد المعجل.\n" +
+                "5. أجب دائماً بهيئة JSON صالح تماماً يحتوي حصراً على الحقول التالية:\n" +
                 "{\n" +
-                "  \"executiveSummary\": \"ملخص تحليلي وافي من فقرتين يوضح القرار المالي النهائي ولماذا يناسب أو يهدد العميل\",\n" +
-                "  \"keyStrengths\": [\"نقاط القوة والأمان المالي لدى العميل\"],\n" +
-                "  \"vulnerabilitiesAndWarnings\": [\"نقاط الضعف والمخاطر الحرجة التي تهدد بتعثره\"],\n" +
-                "  \"actionPlanSteps\": [\"خطوات عملية مرتبة زمنياً ينبغي للعميل اتخاذها قبل أو بعد التقديم\"],\n" +
-                "  \"egyptianMarketInsight\": \"نصيحة مصرفية ذكية خاصة بالسوق المصري (مقارنة بدائل، طرق سداد، أو توقيت)\",\n" +
-                "  \"disclaimer\": \"إخلاء مسؤولية استرشادي\"\n" +
+                "  \"executiveSummary\": \"ملخص تحليلي وافي وشامل باللغة العربية من فقرتين إلى 3 فقرات يوضح القرار المالي النهائي ويجيب على تساؤل العميل بالتحديد ولماذا يناسبه أو يهدده القرض\",\n" +
+                "  \"keyStrengths\": [\"نقاط القوة والأمان المالي لدى العميل باللغة العربية\"],\n" +
+                "  \"vulnerabilitiesAndWarnings\": [\"نقاط الضعف والمخاطر الحرجة التي تهدد بتعثره باللغة العربية\"],\n" +
+                "  \"actionPlanSteps\": [\"خطوات عملية مرتبة زمنياً ينبغي للعميل اتخاذها باللغة العربية\"],\n" +
+                "  \"egyptianMarketInsight\": \"نصيحة مصرفية ذكية خاصة بالسوق المصري باللغة العربية\",\n" +
+                "  \"disclaimer\": \"إخلاء مسؤولية استرشادي باللغة العربية\"\n" +
                 "}";
+
+            sb.AppendLine($"اسم العميل: {clientLabel}");
+            sb.AppendLine("اللغة المطلوبة: العربية الفصحى (100% Arabic Only - No English Words)");
+            if (!string.IsNullOrWhiteSpace(customQuestion))
+            {
+                sb.AppendLine($"سؤال العميل المحدد: {customQuestion}");
+            }
+
+            sb.AppendLine("\n--- الملف المالي للعميل ---");
+            sb.AppendLine($"صافي الدخل الشهري: {report.UserProfile.MonthlyIncome:N0} جنيه مصري");
+            sb.AppendLine($"الدخل الثانوي: {report.UserProfile.SecondaryIncome:N0} جنيه مصري");
+            sb.AppendLine($"إجمالي الدخل الشهري: {report.UserProfile.TotalNetIncome:N0} جنيه مصري");
+            sb.AppendLine($"طبيعة الاستقرار الوظيفي: {(report.UserProfile.Stability == Domain.Enums.IncomeStability.StableEmployed ? "موظف بعقد ثابت" : report.UserProfile.Stability == Domain.Enums.IncomeStability.Freelance ? "عمل حر / مهن حرة" : "صاحب عمل / نشاط تجاري")}");
+            sb.AppendLine($"المصاريف الشهرية الإلزامية: {report.UserProfile.FixedMonthlyExpenses:N0} جنيه مصري");
+            sb.AppendLine($"الأقساط الشهرية القائمة: {report.UserProfile.CurrentMonthlyInstallments:N0} جنيه مصري");
+            sb.AppendLine($"المدخرات النقدية (وسادة الأمان): {report.UserProfile.Savings:N0} جنيه مصري");
+            sb.AppendLine($"عدد المعالين: {report.UserProfile.DependentsCount}");
+            sb.AppendLine($"العمر: {report.UserProfile.Age} سنة");
+            sb.AppendLine($"تأمين صحي: {(report.UserProfile.HasHealthInsurance ? "مؤمن عليه طبياً" : "غير مؤمن عليه")}");
+
+            sb.AppendLine("\n--- تفاصيل القرض المطلوب ---");
+            sb.AppendLine($"أصل التمويل المطلوب: {report.LoanDetails.Principal:N0} جنيه مصري");
+            sb.AppendLine($"مدة السداد: {report.LoanDetails.TenorMonths} شهراً");
+            sb.AppendLine($"سعر الفائدة الاسمي: {report.LoanDetails.AnnualInterestRatePercentage}% ({(report.LoanDetails.CalculationMethod == Domain.Enums.InterestCalculationMethod.Reducing ? "متناقصة" : "ثابتة")})");
+            sb.AppendLine($"معدل الفائدة الفعلي السنوي (APR): {report.AmortizationSchedule.EffectiveAnnualRatePercentage:F1}%");
+            sb.AppendLine($"القسط الشهري للقرض: {report.AmortizationSchedule.MonthlyInstallment:N0} جنيه مصري");
+            sb.AppendLine($"إجمالي الفوائد المحسوبة: {report.AmortizationSchedule.TotalInterest:N0} جنيه مصري");
+            sb.AppendLine($"إجمالي المبلغ المسدد: {report.AmortizationSchedule.TotalPayment:N0} جنيه مصري");
+
+            sb.AppendLine("\n--- القدرة المالية وعبء الدين ---");
+            sb.AppendLine($"نسبة عبء الدين (DTI): {report.Affordability.DtiPercentage:F1}% (الحد الأقصى للبنك المركزي المصري هو 50.0%)");
+            sb.AppendLine($"التوافق مع تعليمات البنك المركزي: {(report.Affordability.DtiPercentage <= 50.0m ? "متوافق ومسموح" : "مخالف ومتجاوز للحد الأقصى")}");
+            sb.AppendLine($"الفائض المالي الشهري بعد سداد القسط: {report.Affordability.DisposableIncomeAfterInstallment:N0} جنيه مصري");
+            sb.AppendLine($"فترة الصمود المالي (صندوق الطوارئ): {report.Affordability.EmergencyRunwayMonths:F1} شهراً");
+            var safeMaxInst = Math.Max(0m, (report.Affordability.NetMonthlyIncome * 0.35m) - report.Affordability.ExistingInstallments);
+            sb.AppendLine($"أقصى قسط آمن موصى به (حد الأمان 35%): {safeMaxInst:N0} جنيه مصري");
+
+            sb.AppendLine("\n--- نتائج اختبارات الضغط والأزمات المالية ---");
+            sb.AppendLine($"اجتياز {report.StressTest.ScenariosSurvived} من أصل {report.StressTest.TotalScenariosTested} سيناريوهات أزمة.");
+            foreach (var sc in report.StressTest.Scenarios)
+            {
+                sb.AppendLine($"- {sc.ScenarioName}: ينجو={(sc.IsSurviving ? "نعم" : "تعثر")}, العجز الشهري الأقصى={sc.MaxMonthlyDeficit:N0} جنيه, التفاصيل={sc.ImpactDescription}");
+            }
+
+            sb.AppendLine("\n--- محاكاة مونت كارلو الاحتمالية (5,000 سيناريو) ---");
+            sb.AppendLine($"احتمالية التعثر: {report.MonteCarlo.DefaultProbabilityPercentage:F1}%");
+            sb.AppendLine($"شهر ذروة الخطر: {(report.MonteCarlo.PeakRiskMonth.HasValue ? $"الشهر #{report.MonteCarlo.PeakRiskMonth.Value}" : "لا يوجد تعثر")}");
+            sb.AppendLine($"متوسط المدخرات بعد انتهاء القرض: {report.MonteCarlo.MedianEndingSavings:N0} جنيه مصري");
+            sb.AppendLine($"المدخرات في أسوأ 5% من الحالات: {report.MonteCarlo.WorstCase5thPercentileSavings:N0} جنيه مصري");
+
+            sb.AppendLine("\n--- مؤشر المخاطر والقرار الحسابي ---");
+            sb.AppendLine($"درجة الخطر: {report.RiskEvaluation.TotalRiskScore}/100 ({report.RiskEvaluation.RiskLabel})");
+            sb.AppendLine($"قرار النظام الحسابي: {report.Recommendation.VerdictHeadline}");
+            sb.AppendLine($"التعليل المالي الأساسي: {report.Recommendation.DetailedReasoning}");
         }
         else
         {
@@ -262,89 +322,87 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
                 "You are an elite, certified retail banking financial advisor specializing in the Egyptian banking sector and Central Bank of Egypt (CBE) regulations.\n" +
                 "Your objective is to craft an empathetic, deeply insightful, transparent, and actionable narrative advisory report based on the deterministic financial figures provided.\n" +
                 "Strict Rules:\n" +
-                "1. NEVER recalculate or alter numbers. All numbers are computed deterministically; explain their meaning, risks, and trade-offs.\n" +
-                "2. Maintain an authoritative yet supportive tone that prioritizes the client's long-term financial survival and wealth preservation.\n" +
-                "3. Reference CBE 50% DTI guidelines, reducing vs flat rate implications, early settlement fees, and emergency runway buffers.\n" +
-                "4. Respond strictly with valid JSON conforming to this schema:\n" +
+                "1. Language: All fields in the response must be strictly 100% in professional English without mixing any Arabic or other language words.\n" +
+                "2. If the client asked a specific question, answer it directly and comprehensively within the executiveSummary and actionPlanSteps.\n" +
+                "3. NEVER recalculate or alter numbers. All numbers are computed deterministically; explain their meaning, risks, and trade-offs.\n" +
+                "4. Reference CBE 50% DTI guidelines, reducing vs flat rate implications, early settlement fees, and emergency runway buffers.\n" +
+                "5. Respond strictly with valid JSON conforming to this schema:\n" +
                 "{\n" +
-                "  \"executiveSummary\": \"Comprehensive 2-3 paragraph executive summary explaining the verdict and feasibility\",\n" +
-                "  \"keyStrengths\": [\"Financial safety factors protecting the borrower\"],\n" +
-                "  \"vulnerabilitiesAndWarnings\": [\"Critical risks that could trigger loan default\"],\n" +
-                "  \"actionPlanSteps\": [\"Sequential concrete action steps the borrower should take\"],\n" +
-                "  \"egyptianMarketInsight\": \"Specific insight regarding Egyptian banking market nuances or alternatives\",\n" +
-                "  \"disclaimer\": \"Regulatory educational disclaimer\"\n" +
+                "  \"executiveSummary\": \"Comprehensive 2-3 paragraph executive summary explaining the verdict and answering the client's questions\",\n" +
+                "  \"keyStrengths\": [\"Financial safety factors protecting the borrower in English\"],\n" +
+                "  \"vulnerabilitiesAndWarnings\": [\"Critical risks that could trigger loan default in English\"],\n" +
+                "  \"actionPlanSteps\": [\"Sequential concrete action steps the borrower should take in English\"],\n" +
+                "  \"egyptianMarketInsight\": \"Specific insight regarding Egyptian banking market nuances or alternatives in English\",\n" +
+                "  \"disclaimer\": \"Regulatory educational disclaimer in English\"\n" +
                 "}";
-        }
 
-        var clientLabel = !string.IsNullOrWhiteSpace(customerName) ? customerName : (isAr ? "العميل" : "Valued Client");
-        var sb = new StringBuilder();
+            sb.AppendLine($"Client: {clientLabel}");
+            sb.AppendLine("Language Requested: English (100% English Only)");
+            if (!string.IsNullOrWhiteSpace(customQuestion))
+            {
+                sb.AppendLine($"Client Specific Question: {customQuestion}");
+            }
 
-        sb.AppendLine($"Client: {clientLabel}");
-        sb.AppendLine($"Language Requested: {(isAr ? "Arabic" : "English")}");
-        if (!string.IsNullOrWhiteSpace(customQuestion))
-        {
-            sb.AppendLine($"Client Specific Question: {customQuestion}");
-        }
+            sb.AppendLine("\n--- USER FINANCIAL PROFILE ---");
+            sb.AppendLine($"Monthly Net Income: {report.UserProfile.MonthlyIncome:N0} EGP");
+            sb.AppendLine($"Secondary Income: {report.UserProfile.SecondaryIncome:N0} EGP");
+            sb.AppendLine($"Total Net Income: {report.UserProfile.TotalNetIncome:N0} EGP");
+            sb.AppendLine($"Employment Stability: {report.UserProfile.Stability}");
+            sb.AppendLine($"Fixed Expenses: {report.UserProfile.FixedMonthlyExpenses:N0} EGP");
+            sb.AppendLine($"Existing Monthly Installments: {report.UserProfile.CurrentMonthlyInstallments:N0} EGP");
+            sb.AppendLine($"Current Savings (Buffer): {report.UserProfile.Savings:N0} EGP");
+            sb.AppendLine($"Dependents: {report.UserProfile.DependentsCount}");
+            sb.AppendLine($"Age: {report.UserProfile.Age} years");
+            sb.AppendLine($"Has Health Insurance: {report.UserProfile.HasHealthInsurance}");
 
-        sb.AppendLine("\n--- USER FINANCIAL PROFILE ---");
-        sb.AppendLine($"Monthly Net Income: {report.UserProfile.MonthlyIncome:N0} EGP");
-        sb.AppendLine($"Secondary Income: {report.UserProfile.SecondaryIncome:N0} EGP");
-        sb.AppendLine($"Total Net Income: {report.UserProfile.TotalNetIncome:N0} EGP");
-        sb.AppendLine($"Employment Stability: {report.UserProfile.Stability}");
-        sb.AppendLine($"Fixed Expenses: {report.UserProfile.FixedMonthlyExpenses:N0} EGP");
-        sb.AppendLine($"Existing Monthly Installments: {report.UserProfile.CurrentMonthlyInstallments:N0} EGP");
-        sb.AppendLine($"Current Savings (Buffer): {report.UserProfile.Savings:N0} EGP");
-        sb.AppendLine($"Dependents: {report.UserProfile.DependentsCount}");
-        sb.AppendLine($"Age: {report.UserProfile.Age} years");
-        sb.AppendLine($"Has Health Insurance: {report.UserProfile.HasHealthInsurance}");
+            sb.AppendLine("\n--- REQUESTED LOAN DETAILS ---");
+            sb.AppendLine($"Principal: {report.LoanDetails.Principal:N0} EGP");
+            sb.AppendLine($"Tenor: {report.LoanDetails.TenorMonths} Months");
+            sb.AppendLine($"Annual Interest Rate: {report.LoanDetails.AnnualInterestRatePercentage}% ({report.LoanDetails.CalculationMethod}, {report.LoanDetails.RateType})");
+            sb.AppendLine($"Effective APR: {report.AmortizationSchedule.EffectiveAnnualRatePercentage:F1}%");
+            sb.AppendLine($"Monthly Installment: {report.AmortizationSchedule.MonthlyInstallment:N0} EGP");
+            sb.AppendLine($"Total Interest: {report.AmortizationSchedule.TotalInterest:N0} EGP");
+            sb.AppendLine($"Total Repayment: {report.AmortizationSchedule.TotalPayment:N0} EGP");
 
-        sb.AppendLine("\n--- REQUESTED LOAN DETAILS ---");
-        sb.AppendLine($"Principal: {report.LoanDetails.Principal:N0} EGP");
-        sb.AppendLine($"Tenor: {report.LoanDetails.TenorMonths} Months");
-        sb.AppendLine($"Annual Interest Rate: {report.LoanDetails.AnnualInterestRatePercentage}% ({report.LoanDetails.CalculationMethod}, {report.LoanDetails.RateType})");
-        sb.AppendLine($"Effective APR: {report.AmortizationSchedule.EffectiveAnnualRatePercentage:F1}%");
-        sb.AppendLine($"Monthly Installment: {report.AmortizationSchedule.MonthlyInstallment:N0} EGP");
-        sb.AppendLine($"Total Interest: {report.AmortizationSchedule.TotalInterest:N0} EGP");
-        sb.AppendLine($"Total Repayment: {report.AmortizationSchedule.TotalPayment:N0} EGP");
+            sb.AppendLine("\n--- AFFORDABILITY & DTI ---");
+            sb.AppendLine($"DTI Ratio: {report.Affordability.DtiPercentage:F1}% (CBE Regulatory Limit is 50.0%)");
+            sb.AppendLine($"Is CBE Compliant: {report.Affordability.DtiPercentage <= 50.0m}");
+            sb.AppendLine($"Remaining Disposable Income: {report.Affordability.DisposableIncomeAfterInstallment:N0} EGP");
+            sb.AppendLine($"Emergency Runway: {report.Affordability.EmergencyRunwayMonths:F1} Months");
+            var safeMaxInst = Math.Max(0m, (report.Affordability.NetMonthlyIncome * 0.35m) - report.Affordability.ExistingInstallments);
+            sb.AppendLine($"Max Safe Installment (35% DTI): {safeMaxInst:N0} EGP");
 
-        sb.AppendLine("\n--- AFFORDABILITY & DTI ---");
-        sb.AppendLine($"DTI Ratio: {report.Affordability.DtiPercentage:F1}% (CBE Regulatory Limit is 50.0%)");
-        sb.AppendLine($"Is CBE Compliant: {report.Affordability.DtiPercentage <= 50.0m}");
-        sb.AppendLine($"Remaining Disposable Income: {report.Affordability.DisposableIncomeAfterInstallment:N0} EGP");
-        sb.AppendLine($"Emergency Runway: {report.Affordability.EmergencyRunwayMonths:F1} Months");
-        var safeMaxInst = Math.Max(0m, (report.Affordability.NetMonthlyIncome * 0.35m) - report.Affordability.ExistingInstallments);
-        sb.AppendLine($"Max Safe Installment (35% DTI): {safeMaxInst:N0} EGP");
+            sb.AppendLine("\n--- STRESS TESTING (DETERMINISTIC CRISES) ---");
+            sb.AppendLine($"Resilient in {report.StressTest.ScenariosSurvived} of {report.StressTest.TotalScenariosTested} crisis scenarios.");
+            foreach (var sc in report.StressTest.Scenarios)
+            {
+                sb.AppendLine($"- {sc.ScenarioName}: Survives={sc.IsSurviving}, Max Monthly Deficit={sc.MaxMonthlyDeficit:N0} EGP, Description={sc.ImpactDescription}");
+            }
 
-        sb.AppendLine("\n--- STRESS TESTING (DETERMINISTIC CRISES) ---");
-        sb.AppendLine($"Resilient in {report.StressTest.ScenariosSurvived} of {report.StressTest.TotalScenariosTested} crisis scenarios.");
-        foreach (var sc in report.StressTest.Scenarios)
-        {
-            sb.AppendLine($"- {sc.ScenarioName}: Survives={sc.IsSurviving}, Max Monthly Deficit={sc.MaxMonthlyDeficit:N0} EGP, Description={sc.ImpactDescription}");
-        }
+            sb.AppendLine("\n--- MONTE CARLO STOCHASTIC SIMULATION (5,000 PATHS) ---");
+            sb.AppendLine($"Default Probability: {report.MonteCarlo.DefaultProbabilityPercentage:F1}%");
+            sb.AppendLine($"Peak Risk Month: Month #{report.MonteCarlo.PeakRiskMonth ?? 1}");
+            sb.AppendLine($"Median Ending Savings: {report.MonteCarlo.MedianEndingSavings:N0} EGP");
+            sb.AppendLine($"Worst 5th Percentile Savings: {report.MonteCarlo.WorstCase5thPercentileSavings:N0} EGP");
 
-        sb.AppendLine("\n--- MONTE CARLO STOCHASTIC SIMULATION (5,000 PATHS) ---");
-        sb.AppendLine($"Default Probability: {report.MonteCarlo.DefaultProbabilityPercentage:F1}%");
-        sb.AppendLine($"Peak Risk Month: Month #{report.MonteCarlo.PeakRiskMonth ?? 1}");
-        sb.AppendLine($"Median Ending Savings: {report.MonteCarlo.MedianEndingSavings:N0} EGP");
-        sb.AppendLine($"Worst 5th Percentile Savings: {report.MonteCarlo.WorstCase5thPercentileSavings:N0} EGP");
+            sb.AppendLine("\n--- 0-100 RISK SCORE & DECISION ---");
+            sb.AppendLine($"Total Risk Score: {report.RiskEvaluation.TotalRiskScore}/100 ({report.RiskEvaluation.RiskLabel})");
+            sb.AppendLine($"Deterministic Verdict: {report.Recommendation.Verdict} - {report.Recommendation.VerdictHeadline}");
+            sb.AppendLine($"Primary Rationale: {report.Recommendation.DetailedReasoning}");
 
-        sb.AppendLine("\n--- 0-100 RISK SCORE & DECISION ---");
-        sb.AppendLine($"Total Risk Score: {report.RiskEvaluation.TotalRiskScore}/100 ({report.RiskEvaluation.RiskLabel})");
-        sb.AppendLine($"Deterministic Verdict: {report.Recommendation.Verdict} - {report.Recommendation.VerdictHeadline}");
-        sb.AppendLine($"Primary Rationale: {report.Recommendation.DetailedReasoning}");
+            var bestStrat = report.Recommendation.Strategies.FirstOrDefault(s => s.NetFinancialBenefit > 0)
+                         ?? report.Recommendation.Strategies.FirstOrDefault();
+            if (bestStrat != null)
+            {
+                sb.AppendLine($"Suggested Repayment Strategy: {bestStrat.StrategyName} (Saves {bestStrat.InterestSavedComparedToStandard:N0} EGP interest, payoff in {bestStrat.TotalMonthsToPayoff} months)");
+            }
 
-        var bestStrat = report.Recommendation.Strategies.FirstOrDefault(s => s.NetFinancialBenefit > 0)
-                     ?? report.Recommendation.Strategies.FirstOrDefault();
-        if (bestStrat != null)
-        {
-            sb.AppendLine($"Suggested Repayment Strategy: {bestStrat.StrategyName} (Saves {bestStrat.InterestSavedComparedToStandard:N0} EGP interest, payoff in {bestStrat.TotalMonthsToPayoff} months)");
-        }
-
-        var bestAlt = report.Recommendation.TopAlternatives.FirstOrDefault(a => a.IsCheaperThanCurrent)
-                   ?? report.Recommendation.TopAlternatives.FirstOrDefault();
-        if (bestAlt != null)
-        {
-            sb.AppendLine($"Market Alternative Offer: {bestAlt.Product.ProviderName} ({bestAlt.Product.ProductName}) at {bestAlt.Product.AnnualInterestRatePercentage}% - Saves {bestAlt.CostDifferenceComparedToCurrent:N0} EGP total cost");
+            var bestAlt = report.Recommendation.TopAlternatives.FirstOrDefault(a => a.IsCheaperThanCurrent)
+                       ?? report.Recommendation.TopAlternatives.FirstOrDefault();
+            if (bestAlt != null)
+            {
+                sb.AppendLine($"Market Alternative Offer: {bestAlt.Product.ProviderName} ({bestAlt.Product.ProductName}) at {bestAlt.Product.AnnualInterestRatePercentage}% - Saves {bestAlt.CostDifferenceComparedToCurrent:N0} EGP total cost");
+            }
         }
 
         return (systemPrompt, sb.ToString());
