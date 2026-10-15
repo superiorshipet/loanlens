@@ -13,6 +13,9 @@ public class LoanAdvisorService : ILoanAdvisorService
     private readonly IMonteCarloEngine _monteCarloEngine;
     private readonly IRiskScoringEngine _riskScoringEngine;
     private readonly IRecommendationEngine _recommendationEngine;
+    private readonly IBorrowingCapacityEngine _borrowingCapacityEngine;
+    private readonly IDebtConsolidationEngine _debtConsolidationEngine;
+    private readonly IRateSensitivityEngine _rateSensitivityEngine;
 
     public LoanAdvisorService(
         IFinancialCalculator calculator,
@@ -20,7 +23,10 @@ public class LoanAdvisorService : ILoanAdvisorService
         IStressTestingEngine stressTestingEngine,
         IMonteCarloEngine monteCarloEngine,
         IRiskScoringEngine riskScoringEngine,
-        IRecommendationEngine recommendationEngine)
+        IRecommendationEngine recommendationEngine,
+        IBorrowingCapacityEngine borrowingCapacityEngine,
+        IDebtConsolidationEngine debtConsolidationEngine,
+        IRateSensitivityEngine rateSensitivityEngine)
     {
         _calculator = calculator;
         _affordabilityAnalyzer = affordabilityAnalyzer;
@@ -28,6 +34,9 @@ public class LoanAdvisorService : ILoanAdvisorService
         _monteCarloEngine = monteCarloEngine;
         _riskScoringEngine = riskScoringEngine;
         _recommendationEngine = recommendationEngine;
+        _borrowingCapacityEngine = borrowingCapacityEngine;
+        _debtConsolidationEngine = debtConsolidationEngine;
+        _rateSensitivityEngine = rateSensitivityEngine;
     }
 
     public AmortizationSchedule CalculateSchedule(LoanInputDto loanDto)
@@ -298,5 +307,40 @@ public class LoanAdvisorService : ILoanAdvisorService
             WinnerScenarioName: winnerName,
             DetailedAdvisorRationale: rationale
         );
+    }
+
+    public BorrowingCapacityResult CalculateBorrowingCapacity(BorrowingCapacityRequestDto request, string language = "en")
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : language;
+        return _borrowingCapacityEngine.CalculateCapacity(
+            request.Profile.ToDomain(),
+            request.TargetInterestRatePercentage,
+            request.TargetTenorMonths,
+            request.CalculationMethod,
+            effectiveLang
+        );
+    }
+
+    public DebtConsolidationResult AnalyzeDebtConsolidation(DebtConsolidationRequestDto request, string language = "en")
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : language;
+        var debts = request.ExistingDebts.Select(d => d.ToDomain()).ToList();
+        return _debtConsolidationEngine.AnalyzeConsolidation(
+            request.Profile.ToDomain(),
+            debts,
+            request.TargetOffer.ToDomain(),
+            effectiveLang
+        );
+    }
+
+    public RateSensitivitySummary AnalyzeRateSensitivity(RateSensitivityRequestDto request, string language = "en")
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : language;
+        var loan = request.Loan.ToDomain();
+        var installment = _calculator.CalculateMonthlyInstallment(loan);
+        return _rateSensitivityEngine.AnalyzeSensitivity(loan, installment, effectiveLang);
     }
 }

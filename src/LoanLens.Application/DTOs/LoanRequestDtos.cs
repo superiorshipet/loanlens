@@ -77,3 +77,57 @@ public record ScenarioComparisonRequestDto(
     string? ScenarioAName = "Scenario A",
     string? ScenarioBName = "Scenario B",
     string? Language = null);
+
+public record BorrowingCapacityRequestDto(
+    UserProfileDto Profile,
+    decimal TargetInterestRatePercentage,
+    int TargetTenorMonths,
+    InterestCalculationMethod CalculationMethod = InterestCalculationMethod.Reducing,
+    string? Language = null);
+
+public record ExistingDebtItemDto(
+    string DebtName,
+    decimal RemainingPrincipal,
+    decimal MonthlyInstallment,
+    int RemainingMonths,
+    decimal EarlySettlementFeePercentage = 3.0m)
+{
+    public ExistingDebtItem ToDomain() => new(
+        DebtName: DebtName,
+        RemainingPrincipal: RemainingPrincipal,
+        MonthlyInstallment: MonthlyInstallment,
+        RemainingMonths: RemainingMonths,
+        EarlySettlementFeePercentage: EarlySettlementFeePercentage
+    );
+}
+
+public record ConsolidationTargetOfferDto(
+    string ProviderName,
+    decimal AnnualInterestRatePercentage,
+    int TenorMonths,
+    decimal AdminFeePercentage = 1.5m,
+    InterestCalculationMethod CalculationMethod = InterestCalculationMethod.Reducing)
+{
+    public ConsolidationTargetOffer ToDomain() => new(
+        ProviderName: ProviderName,
+        AnnualInterestRatePercentage: AnnualInterestRatePercentage,
+        TenorMonths: TenorMonths,
+        AdminFeePercentage: AdminFeePercentage,
+        CalculationMethod: CalculationMethod
+    );
+}
+
+public record DebtConsolidationRequestDto(
+    UserProfileDto Profile,
+    List<ExistingDebtItemDto> ExistingDebts,
+    ConsolidationTargetOfferDto TargetOffer,
+    string? Language = null);
+
+public record RateSensitivityRequestDto(
+    LoanInputDto Loan,
+    string? Language = null);
+
+public record ExportExcelRequestDto(
+    LoanInputDto Loan,
+    string? CustomerName = null,
+    string? Language = null);

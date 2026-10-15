@@ -179,6 +179,118 @@ public static class LoanRequestValidator
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }
 
+    public static Dictionary<string, string[]> Validate(BorrowingCapacityRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request?.Language) ? request.Language : language;
+        var isAr = LoanLensLanguage.IsArabic(effectiveLang);
+
+        if (request is null)
+        {
+            errors["request"] = [isAr ? "بيانات الطلب مطلوبة." : "Request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        var profileErrors = Validate(request.Profile, new LoanInputDto(1000m, 12, 10m), effectiveLang);
+        foreach (var (key, msgs) in profileErrors.Where(p => p.Key.StartsWith("profile", StringComparison.OrdinalIgnoreCase)))
+        {
+            errors[key] = msgs.ToList();
+        }
+
+        if (request.TargetInterestRatePercentage < 0 || request.TargetInterestRatePercentage > 150)
+            AddError(errors, "targetInterestRatePercentage", isAr ? "نسبة الفائدة المستهدفة يجب أن تكون بين 0% و 150%." : "Target interest rate percentage must be between 0% and 150%.");
+
+        if (request.TargetTenorMonths <= 0 || request.TargetTenorMonths > 360)
+            AddError(errors, "targetTenorMonths", isAr ? "مدة القرض المستهدفة يجب أن تكون بين 1 و 360 شهراً." : "Target tenor must be between 1 and 360 months.");
+
+        return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
+    public static Dictionary<string, string[]> Validate(DebtConsolidationRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request?.Language) ? request.Language : language;
+        var isAr = LoanLensLanguage.IsArabic(effectiveLang);
+
+        if (request is null)
+        {
+            errors["request"] = [isAr ? "بيانات طلب دمج القروض مطلوبة." : "Debt consolidation request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        var profileErrors = Validate(request.Profile, new LoanInputDto(1000m, 12, 10m), effectiveLang);
+        foreach (var (key, msgs) in profileErrors.Where(p => p.Key.StartsWith("profile", StringComparison.OrdinalIgnoreCase)))
+        {
+            errors[key] = msgs.ToList();
+        }
+
+        if (request.ExistingDebts is null || request.ExistingDebts.Count == 0)
+        {
+            AddError(errors, "existingDebts", isAr ? "يجب إدخال قرض أو مديونية حالية واحدة على الأقل." : "At least one existing debt must be provided.");
+        }
+        else
+        {
+            for (int i = 0; i < request.ExistingDebts.Count; i++)
+            {
+                var debt = request.ExistingDebts[i];
+                if (debt.RemainingPrincipal <= 0)
+                    AddError(errors, $"existingDebts[{i}].remainingPrincipal", isAr ? "أصل المديونية المتبقي يجب أن يكون أكبر من صفر." : "Remaining principal must be greater than zero.");
+                if (debt.MonthlyInstallment <= 0)
+                    AddError(errors, $"existingDebts[{i}].monthlyInstallment", isAr ? "قيمة القسط الحالي يجب أن تكون أكبر من صفر." : "Monthly installment must be greater than zero.");
+                if (debt.RemainingMonths <= 0 || debt.RemainingMonths > 360)
+                    AddError(errors, $"existingDebts[{i}].remainingMonths", isAr ? "الشهور المتبقية يجب أن تكون بين 1 و 360 شهراً." : "Remaining months must be between 1 and 360.");
+                if (debt.EarlySettlementFeePercentage < 0 || debt.EarlySettlementFeePercentage > 25)
+                    AddError(errors, $"existingDebts[{i}].earlySettlementFeePercentage", isAr ? "نسبة غرامة السداد المعجل يجب أن تكون بين 0% و 25%." : "Early settlement fee must be between 0% and 25%.");
+            }
+        }
+
+        if (request.TargetOffer is null)
+        {
+            AddError(errors, "targetOffer", isAr ? "بيانات عرض القرض الجديد المستهدف مطلوبة." : "Target consolidation loan offer details are required.");
+        }
+        else
+        {
+            if (request.TargetOffer.TenorMonths <= 0 || request.TargetOffer.TenorMonths > 360)
+                AddError(errors, "targetOffer.tenorMonths", isAr ? "مدة القرض الجديد يجب أن تكون بين 1 و 360 شهراً." : "Target tenor must be between 1 and 360 months.");
+            if (request.TargetOffer.AnnualInterestRatePercentage < 0 || request.TargetOffer.AnnualInterestRatePercentage > 150)
+                AddError(errors, "targetOffer.annualInterestRatePercentage", isAr ? "نسبة الفائدة السنوية المستهدفة يجب أن تكون بين 0% و 150%." : "Annual interest rate must be between 0% and 150%.");
+            if (request.TargetOffer.AdminFeePercentage < 0 || request.TargetOffer.AdminFeePercentage > 25)
+                AddError(errors, "targetOffer.adminFeePercentage", isAr ? "نسبة المصاريف الإدارية يجب أن تكون بين 0% و 25%." : "Admin fee must be between 0% and 25%.");
+        }
+
+        return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
+    public static Dictionary<string, string[]> Validate(RateSensitivityRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request?.Language) ? request.Language : language;
+        var isAr = LoanLensLanguage.IsArabic(effectiveLang);
+
+        if (request is null)
+        {
+            errors["request"] = [isAr ? "بيانات الطلب مطلوبة." : "Request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        return Validate(request.Loan, effectiveLang);
+    }
+
+    public static Dictionary<string, string[]> Validate(ExportExcelRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request?.Language) ? request.Language : language;
+        var isAr = LoanLensLanguage.IsArabic(effectiveLang);
+
+        if (request is null)
+        {
+            errors["request"] = [isAr ? "بيانات الطلب مطلوبة." : "Request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        return Validate(request.Loan, effectiveLang);
+    }
+
     public static void ValidateMonteCarloOptions(MonteCarloOptionsDto options, Dictionary<string, List<string>> errors, bool isAr)
     {
         if (options.Iterations <= 0 || options.Iterations > 50000)

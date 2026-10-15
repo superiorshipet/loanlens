@@ -13,4 +13,7 @@ public interface ILoanAdvisorService
     IReadOnlyList<LoanProduct> GetLoanCatalog(string language = "en");
     ScenarioComparisonResultDto CompareScenarios(ScenarioComparisonRequestDto request, string language = "en");
     ScenarioComparisonResultDto CompareReports(ComprehensiveLoanReportDto reportA, ComprehensiveLoanReportDto reportB, string scenarioAName = "Scenario A", string scenarioBName = "Scenario B", string language = "en");
+    BorrowingCapacityResult CalculateBorrowingCapacity(BorrowingCapacityRequestDto request, string language = "en");
+    DebtConsolidationResult AnalyzeDebtConsolidation(DebtConsolidationRequestDto request, string language = "en");
+    RateSensitivitySummary AnalyzeRateSensitivity(RateSensitivityRequestDto request, string language = "en");
 }

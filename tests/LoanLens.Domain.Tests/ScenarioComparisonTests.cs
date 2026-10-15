@@ -19,6 +19,9 @@ public class ScenarioComparisonTests
         var monteCarlo = new MonteCarloEngine();
         var risk = new RiskScoringEngine();
         var recommendation = new RecommendationEngine(calculator);
+        var borrowing = new BorrowingCapacityEngine();
+        var consolidation = new DebtConsolidationEngine(calculator);
+        var sensitivity = new RateSensitivityEngine(calculator);
 
         _advisorService = new LoanAdvisorService(
             calculator,
@@ -26,7 +29,10 @@ public class ScenarioComparisonTests
             stress,
             monteCarlo,
             risk,
-            recommendation
+            recommendation,
+            borrowing,
+            consolidation,
+            sensitivity
         );
     }
 

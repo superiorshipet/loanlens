@@ -349,6 +349,84 @@ loanGroup.MapGet("/scenarios/compare", async (Guid id1, Guid id2, HttpContext co
 .WithSummary("Compare Two Saved Scenarios by IDs")
 .WithDescription("Loads two saved scenarios from SQLite database and performs a full side-by-side comparative analysis.");
 
+// 14. Calculate Borrowing Capacity & Affordability Ceiling
+loanGroup.MapPost("/borrowing-capacity", (BorrowingCapacityRequestDto request, HttpContext context, ILoanAdvisorService service) =>
+{
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات القدرة الاقتراضية غير صالحة" : "Invalid borrowing capacity parameters");
+
+    var capacity = service.CalculateBorrowingCapacity(request!, lang);
+    return Results.Ok(capacity);
+})
+.WithName("CalculateBorrowingCapacity")
+.WithSummary("Calculate Maximum Borrowing Capacity")
+.WithDescription("Calculates maximum loan amount and installment under Egyptian Central Bank (CBE) 50% legal limit vs 35% safe recommended ceiling.");
+
+// 15. Simulate Debt Buyout & Multi-Loan Consolidation
+loanGroup.MapPost("/debt-consolidation", (DebtConsolidationRequestDto request, HttpContext context, ILoanAdvisorService service) =>
+{
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات دمج المديونيات غير صالحة" : "Invalid debt consolidation parameters");
+
+    var result = service.AnalyzeDebtConsolidation(request!, lang);
+    return Results.Ok(result);
+})
+.WithName("AnalyzeDebtConsolidation")
+.WithSummary("Analyze Debt Buyout and Consolidation")
+.WithDescription("Evaluates consolidation of multiple existing loans/credit cards into a single new facility, accounting for bank early settlement fees and monthly cash flow freed up.");
+
+// 16. Variable Rate & CBE Corridor Sensitivity Simulation
+loanGroup.MapPost("/rate-sensitivity", (RateSensitivityRequestDto request, HttpContext context, ILoanAdvisorService service) =>
+{
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات حساسية الفائدة غير صالحة" : "Invalid rate sensitivity parameters");
+
+    var result = service.AnalyzeRateSensitivity(request!, lang);
+    return Results.Ok(result);
+})
+.WithName("AnalyzeRateSensitivity")
+.WithSummary("Variable Rate and CBE Corridor Sensitivity Analysis")
+.WithDescription("Models the impact of benchmark interest rate shifts (+100 bps, +200 bps, +300 bps, -100 bps, -200 bps) on monthly installments and total interest paid.");
+
+// 17. Export Amortization Schedule to Excel (.xlsx)
+loanGroup.MapPost("/export-excel", (ExportExcelRequestDto request, HttpContext context, ILoanAdvisorService service, IExcelExportService excelService) =>
+{
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات تصدير الإكسيل غير صالحة" : "Invalid excel export parameters");
+
+    var schedule = service.CalculateSchedule(request!.Loan);
+    var excelBytes = excelService.ExportAmortizationScheduleToExcel(request.Loan.ToDomain(), schedule, request.CustomerName, lang);
+    var fileName = $"LoanLens-Schedule-{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx";
+    return Results.File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+})
+.WithName("ExportExcelSchedule")
+.WithSummary("Export Amortization Schedule to Excel (.xlsx)")
+.WithDescription("Generates an interactive, styled Excel spreadsheet with metadata summary, formatted currency numbers, and complete monthly amortization schedule.");
+
+// 18. Export Saved Scenario Amortization Schedule to Excel (.xlsx)
+loanGroup.MapGet("/scenarios/{id:guid}/excel", async (Guid id, HttpContext context, IScenarioRepository repo, IExcelExportService excelService, CancellationToken ct) =>
+{
+    var lang = ResolveLanguage(context);
+    var report = await repo.GetScenarioByIdAsync(id, ct);
+    if (report is null)
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
+
+    var excelBytes = excelService.ExportAmortizationScheduleToExcel(report.LoanDetails, report.AmortizationSchedule, null, lang);
+    var fileName = $"LoanLens-Scenario-{id}.xlsx";
+    return Results.File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+})
+.WithName("DownloadScenarioExcel")
+.WithSummary("Download Saved Scenario Excel (.xlsx)")
+.WithDescription("Exports amortization schedule of a saved loan scenario directly to an Excel spreadsheet.");
+
 // Initialize SQLite database schema
 using (var scope = app.Services.CreateScope())
 {
