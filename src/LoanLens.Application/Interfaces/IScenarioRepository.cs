@@ -8,15 +8,3 @@ public interface IScenarioRepository
     Task<ComprehensiveLoanReportDto?> GetScenarioByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SavedScenarioSummaryDto>> GetRecentScenariosAsync(int count = 20, CancellationToken cancellationToken = default);
 }
-
-public record SavedScenarioSummaryDto(
-    Guid Id,
-    DateTime CreatedAt,
-    string? CustomerName,
-    decimal Principal,
-    int TenorMonths,
-    decimal MonthlyInstallment,
-    decimal DtiPercentage,
-    decimal RiskScore,
-    string RiskCategory,
-    string VerdictHeadline);

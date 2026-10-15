@@ -10,10 +10,3 @@ public record RateSensitivityScenarioItem(
     decimal TotalInterestDelta,
     decimal TotalRepaymentAmount,
     string ImpactSeverity);
-
-public record RateSensitivitySummary(
-    decimal BaseAnnualRatePercentage,
-    decimal BaseMonthlyInstallment,
-    decimal BaseTotalInterest,
-    IReadOnlyList<RateSensitivityScenarioItem> Scenarios,
-    string KeyTakeawayAdvice);

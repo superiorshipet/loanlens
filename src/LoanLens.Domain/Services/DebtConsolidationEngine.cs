@@ -1,3 +1,4 @@
+using LoanLens.Domain.Enums;
 using LoanLens.Domain.Localization;
 using LoanLens.Domain.ValueObjects;
 

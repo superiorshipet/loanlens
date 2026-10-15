@@ -783,7 +783,3 @@ static string ResolveLanguage(HttpContext context, string? explicitLang = null, 
 
     return LoanLensLanguage.English;
 }
-
-// DTO helpers for API bindings
-public record AffordabilityRequestDto(UserProfileDto Profile, LoanInputDto Loan);
-public record MonteCarloRequestDto(UserProfileDto Profile, LoanInputDto Loan, int Iterations = 5000, MonteCarloOptionsDto? Options = null);

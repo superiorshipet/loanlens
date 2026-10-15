@@ -9,7 +9,3 @@ public record LoanNarrativeAdvice(
     string Disclaimer,
     string ModelUsed,
     DateTime GeneratedAtUtc);
-
-public record AiAdviceRequestDto(
-    LoanAnalysisRequestDto AnalysisRequest,
-    string? CustomQuestion = null);
