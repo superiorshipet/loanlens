@@ -11,4 +11,6 @@ public interface ILoanAdvisorService
     MonteCarloSimulationResult RunMonteCarlo(UserProfileDto profileDto, LoanInputDto loanDto, int iterations = 5000, MonteCarloOptionsDto? options = null);
     ComprehensiveLoanReportDto GenerateFullReport(LoanAnalysisRequestDto request, string language = "en");
     IReadOnlyList<LoanProduct> GetLoanCatalog(string language = "en");
+    ScenarioComparisonResultDto CompareScenarios(ScenarioComparisonRequestDto request, string language = "en");
+    ScenarioComparisonResultDto CompareReports(ComprehensiveLoanReportDto reportA, ComprehensiveLoanReportDto reportB, string scenarioAName = "Scenario A", string scenarioBName = "Scenario B", string language = "en");
 }

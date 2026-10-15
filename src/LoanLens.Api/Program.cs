@@ -265,13 +265,50 @@ loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, HttpContext context
 .WithSummary("Download Saved Scenario PDF")
 .WithDescription("Generates and downloads PDF report directly from a previously saved scenario ID.");
 
+// 12. Compare Two Loan Scenarios Side-by-Side (Arbitrary Request Payloads)
+loanGroup.MapPost("/compare", (ScenarioComparisonRequestDto request, HttpContext context, ILoanAdvisorService service) =>
+{
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات المقارنة غير صالحة" : "Invalid comparison input parameters");
+
+    var comparison = service.CompareScenarios(request!, lang);
+    return Results.Ok(comparison);
+})
+.WithName("CompareScenarios")
+.WithSummary("Side-by-Side Loan Scenarios Comparison")
+.WithDescription("Compares two arbitrary loan scenarios across Monthly Installment, Total Interest, APR, DTI, Risk Score, and Monte Carlo Default Probability.");
+
+// 13. Compare Two Saved Scenarios by IDs
+loanGroup.MapGet("/scenarios/compare", async (Guid id1, Guid id2, HttpContext context, IScenarioRepository repo, ILoanAdvisorService service, CancellationToken ct) =>
+{
+    var lang = ResolveLanguage(context);
+    var reportA = await repo.GetScenarioByIdAsync(id1, ct);
+    if (reportA is null)
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو الأول بالمعرف {id1}" : $"Scenario 1 not found with ID {id1}" });
+
+    var reportB = await repo.GetScenarioByIdAsync(id2, ct);
+    if (reportB is null)
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو الثاني بالمعرف {id2}" : $"Scenario 2 not found with ID {id2}" });
+
+    var nameA = LoanLensLanguage.IsArabic(lang) ? $"السيناريو الأول ({id1.ToString()[..8]})" : $"Scenario 1 ({id1.ToString()[..8]})";
+    var nameB = LoanLensLanguage.IsArabic(lang) ? $"السيناريو الثاني ({id2.ToString()[..8]})" : $"Scenario 2 ({id2.ToString()[..8]})";
+
+    var comparison = service.CompareReports(reportA, reportB, nameA, nameB, lang);
+    return Results.Ok(comparison);
+})
+.WithName("CompareSavedScenarios")
+.WithSummary("Compare Two Saved Scenarios by IDs")
+.WithDescription("Loads two saved scenarios from SQLite database and performs a full side-by-side comparative analysis.");
+
 // Initialize SQLite database schema
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LoanLensDbContext>();
     db.Database.EnsureCreated();
 }
-
+    
 app.Run();
 
 // Language resolution helper: supports explicit param, ?lang= query string, Accept-Language header, default English

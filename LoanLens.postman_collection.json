@@ -351,6 +351,235 @@
         },
         "description": "Retrieves catalog of commercial bank loans and consumer finance products in English (default) or Arabic (lang=ar)."
       }
+    },
+    {
+      "name": "12. Compare Two Scenarios Side-by-Side",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept-Language",
+            "value": "{{lang}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"scenarioAName\": \"Banque Misr (36 Months @ 22.5%)\",\n  \"scenarioBName\": \"NBE (24 Months @ 21.5%)\",\n  \"language\": \"{{lang}}\",\n  \"scenarioA\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 22.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  },\n  \"scenarioB\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 24,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/compare?lang={{lang}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "compare"],
+          "query": [
+            {
+              "key": "lang",
+              "value": "{{lang}}"
+            }
+          ]
+        },
+        "description": "Compares two arbitrary loan offers side-by-side, detailing differences in Monthly Installment, Total Interest Paid, Effective APR, DTI, Default Probability, Risk Score, and crowning the winning scenario with advisor rationale."
+      }
+    },
+    {
+      "name": "13. Compare Saved Scenarios by IDs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept-Language",
+            "value": "{{lang}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/scenarios/compare?id1={{scenarioId}}&id2={{scenarioId}}&lang={{lang}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "scenarios", "compare"],
+          "query": [
+            {
+              "key": "id1",
+              "value": "{{scenarioId}}"
+            },
+            {
+              "key": "id2",
+              "value": "{{scenarioId}}"
+            },
+            {
+              "key": "lang",
+              "value": "{{lang}}"
+            }
+          ]
+        },
+        "description": "Loads two previously saved scenarios by GUID IDs from SQLite and performs a full side-by-side comparative analysis."
+      }
+    },
+    {
+      "name": "Realistic Egyptian Scenarios (Ready-to-Test)",
+      "item": [
+        {
+          "name": "Scenario 1: Safe Profile - Stable Corporate Employee (Take Loan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Tamer Hosny (Senior Engineer)\",\n  \"profile\": {\n    \"monthlyIncome\": 45000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 15000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 100000,\n    \"dependentsCount\": 1,\n    \"age\": 33,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 3000\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 24,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "full-analysis"],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Safe Low-Risk Profile: Stable employee with high savings (100k) and solid income (45k). Low DTI, survives all stress shocks, default probability near 0%, Verdict: TakeLoan."
+          }
+        },
+        {
+          "name": "Scenario 2: Critical Risk - DTI > 50% & Deficit (Avoid Loan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Sayed Mohamed (High Debt Burden)\",\n  \"profile\": {\n    \"monthlyIncome\": 9000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 6500,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 3000,\n    \"dependentsCount\": 3,\n    \"age\": 38,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 120000,\n    \"tenorMonths\": 24,\n    \"annualInterestRatePercentage\": 24.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 2.0,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "full-analysis"],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Critical Risk: Low income (9k), low savings (3k), 3 dependents. Total monthly installments exceed 50% DTI limit and wipe out cash flow. Verdict: AvoidLoan."
+          }
+        },
+        {
+          "name": "Scenario 3: Volatile Freelancer Without Health Insurance (Adjust Terms)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Youssef Ehab (Freelance Designer)\",\n  \"profile\": {\n    \"monthlyIncome\": 26000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 25000,\n    \"dependentsCount\": 1,\n    \"age\": 29,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 160000,\n    \"tenorMonths\": 24,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.75,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000,\n  \"monteCarloOptions\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 20.0,\n    \"customEmergencyAnnualProbability\": 15.0,\n    \"customEmergencyCost\": 35000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "full-analysis"],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Moderate/High Risk: Freelancer with volatile income and no insurance. Short 24-month term creates high installment risk under medical or income shock. Verdict: AdjustTerms (extend tenor or build emergency buffer)."
+          }
+        },
+        {
+          "name": "Scenario 4: High Flat Rate Consumer Loan vs Bank Refinance (Take Alternative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nourhan Zaki (Consumer Finance Buyer)\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 10000,\n    \"currentMonthlyInstallments\": 0,\n    \"savings\": 45000,\n    \"dependentsCount\": 0,\n    \"age\": 31,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 16.0,\n    \"calculationMethod\": 2,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 3.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 3.0\n  },\n  \"monteCarloIterations\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "full-analysis"],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Consumer Loan Comparison: 16% Flat rate appears deceptively low, but its Effective APR exceeds 28.5%. Recommendation flags cheaper commercial bank reducing rate alternatives (e.g. NBE / Misr at 21.5% saving 15,000+ EGP)."
+          }
+        },
+        {
+          "name": "Scenario 5: Prepayment & Annual Bonus Optimization Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Khaled Mostafa (Bonus Prepayment Strategy)\",\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 13000,\n    \"currentMonthlyInstallments\": 1000,\n    \"savings\": 70000,\n    \"dependentsCount\": 2,\n    \"age\": 35,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 5000\n  },\n  \"loan\": {\n    \"principal\": 200000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "loans", "full-analysis"],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Repayment Strategy Optimization: Simulates accelerated +15% monthly extra payoff vs annual 10% bonus prepayment. Calculates net interest saved after deducting the bank's 3% early settlement penalty, and warns against payment holidays."
+          }
+        }
+      ]
     }
   ]
 }

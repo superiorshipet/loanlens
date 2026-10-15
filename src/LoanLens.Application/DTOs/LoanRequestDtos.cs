@@ -70,3 +70,10 @@ public record LoanAnalysisRequestDto(
     string? CustomerName = null,
     string? Language = null,
     MonteCarloOptionsDto? MonteCarloOptions = null);
+
+public record ScenarioComparisonRequestDto(
+    LoanAnalysisRequestDto ScenarioA,
+    LoanAnalysisRequestDto ScenarioB,
+    string? ScenarioAName = "Scenario A",
+    string? ScenarioBName = "Scenario B",
+    string? Language = null);

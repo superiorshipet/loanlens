@@ -152,6 +152,33 @@ public static class LoanRequestValidator
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }
 
+    public static Dictionary<string, string[]> Validate(ScenarioComparisonRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var effectiveLang = !string.IsNullOrWhiteSpace(request?.Language) ? request.Language : language;
+        var isAr = LoanLensLanguage.IsArabic(effectiveLang);
+
+        if (request is null)
+        {
+            errors["request"] = [isAr ? "بيانات طلب المقارنة مطلوبة." : "Comparison request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        var errorsA = Validate(request.ScenarioA, effectiveLang);
+        foreach (var (key, msgs) in errorsA)
+        {
+            errors[$"scenarioA.{key}"] = msgs.ToList();
+        }
+
+        var errorsB = Validate(request.ScenarioB, effectiveLang);
+        foreach (var (key, msgs) in errorsB)
+        {
+            errors[$"scenarioB.{key}"] = msgs.ToList();
+        }
+
+        return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
     public static void ValidateMonteCarloOptions(MonteCarloOptionsDto options, Dictionary<string, List<string>> errors, bool isAr)
     {
         if (options.Iterations <= 0 || options.Iterations > 50000)

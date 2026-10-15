@@ -12,3 +12,27 @@ public record ComprehensiveLoanReportDto(
     RiskEvaluation RiskEvaluation,
     FinalAdvisorDecision Recommendation,
     DateTime GeneratedAtUtc);
+
+public record ScenarioComparisonMetricDiff(
+    string MetricName,
+    string ScenarioAValue,
+    string ScenarioBValue,
+    decimal NumericalDifference,
+    string AdvantageDescription,
+    string PreferredScenario);
+
+public record ScenarioComparisonResultDto(
+    string ScenarioAName,
+    string ScenarioBName,
+    ComprehensiveLoanReportDto ReportA,
+    ComprehensiveLoanReportDto ReportB,
+    decimal MonthlyInstallmentDiff,
+    decimal TotalInterestDiff,
+    decimal EffectiveAprDiff,
+    decimal DtiDiff,
+    decimal DefaultProbabilityDiff,
+    decimal RiskScoreDiff,
+    IReadOnlyList<ScenarioComparisonMetricDiff> KeyDifferences,
+    string VerdictComparisonSummary,
+    string WinnerScenarioName,
+    string DetailedAdvisorRationale);
