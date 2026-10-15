@@ -31,6 +31,32 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
+// Global Exception Handling middleware (RFC 7807 ProblemDetails)
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        context.Response.ContentType = "application/problem+json";
+        var statusCode = ex is ArgumentException or FormatException ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
+        context.Response.StatusCode = statusCode;
+
+        var problem = new
+        {
+            type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+            title = statusCode == 400 ? "بيانات المدخلات غير صحيحة" : "خطأ غير متوقع في الخادم",
+            status = statusCode,
+            detail = ex.Message,
+            instance = context.Request.Path.Value
+        };
+
+        await context.Response.WriteAsJsonAsync(problem);
+    }
+});
+
 // URL path normalization: safely handle double slashes from Postman baseUrl concatenation (e.g. //api/...)
 app.Use((context, next) =>
 {

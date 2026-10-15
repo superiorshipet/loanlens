@@ -8,24 +8,24 @@ public class FinancialCalculator : IFinancialCalculator
     public decimal CalculateMonthlyInstallment(LoanParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
-        if (parameters.Principal <= 0) throw new ArgumentOutOfRangeException(nameof(parameters), "Principal must be positive.");
-        if (parameters.TenorMonths <= 0) throw new ArgumentOutOfRangeException(nameof(parameters), "Tenor must be positive.");
+        var principal = Math.Max(1_000m, Math.Abs(parameters.Principal));
+        var tenor = Math.Clamp(Math.Abs(parameters.TenorMonths) == 0 ? 12 : Math.Abs(parameters.TenorMonths), 1, 360);
+        var rate = Math.Max(0m, Math.Abs(parameters.AnnualInterestRatePercentage));
 
         if (parameters.CalculationMethod == InterestCalculationMethod.Flat)
         {
-            var totalInterest = parameters.Principal * (parameters.AnnualInterestRatePercentage / 100m) * (parameters.TenorMonths / 12m);
-            var totalPayment = parameters.Principal + totalInterest;
-            return Math.Round(totalPayment / parameters.TenorMonths, 2);
+            var totalInterest = principal * (rate / 100m) * (tenor / 12m);
+            var totalPayment = principal + totalInterest;
+            return Math.Round(totalPayment / tenor, 2);
         }
         else
         {
-            if (parameters.AnnualInterestRatePercentage <= 0)
-                return Math.Round(parameters.Principal / parameters.TenorMonths, 2);
+            if (rate <= 0)
+                return Math.Round(principal / tenor, 2);
 
-            var monthlyRate = (double)(parameters.AnnualInterestRatePercentage / 100m / 12m);
-            var n = parameters.TenorMonths;
-            var factor = Math.Pow(1.0 + monthlyRate, n);
-            var monthlyPaymentDouble = (double)parameters.Principal * (monthlyRate * factor) / (factor - 1.0);
+            var monthlyRate = (double)(rate / 100m / 12m);
+            var factor = Math.Pow(1.0 + monthlyRate, tenor);
+            var monthlyPaymentDouble = (double)principal * (monthlyRate * factor) / (factor - 1.0);
             return Math.Round((decimal)monthlyPaymentDouble, 2);
         }
     }
@@ -33,13 +33,22 @@ public class FinancialCalculator : IFinancialCalculator
     public AmortizationSchedule CalculateSchedule(LoanParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
+        var safeParams = new LoanParameters(
+            Principal: Math.Max(1_000m, Math.Abs(parameters.Principal)),
+            TenorMonths: Math.Clamp(Math.Abs(parameters.TenorMonths) == 0 ? 12 : Math.Abs(parameters.TenorMonths), 1, 360),
+            AnnualInterestRatePercentage: Math.Max(0m, Math.Abs(parameters.AnnualInterestRatePercentage)),
+            CalculationMethod: Enum.IsDefined(typeof(InterestCalculationMethod), parameters.CalculationMethod) ? parameters.CalculationMethod : InterestCalculationMethod.Reducing,
+            RateType: Enum.IsDefined(typeof(InterestRateType), parameters.RateType) ? parameters.RateType : InterestRateType.Fixed,
+            AdminFeePercentage: Math.Max(0m, Math.Abs(parameters.AdminFeePercentage)),
+            EarlyRepaymentFeePercentage: Math.Max(0m, Math.Abs(parameters.EarlyRepaymentFeePercentage))
+        );
 
-        if (parameters.CalculationMethod == InterestCalculationMethod.Flat)
+        if (safeParams.CalculationMethod == InterestCalculationMethod.Flat)
         {
-            return CalculateFlatSchedule(parameters);
+            return CalculateFlatSchedule(safeParams);
         }
 
-        return CalculateReducingSchedule(parameters);
+        return CalculateReducingSchedule(safeParams);
     }
 
     public decimal CalculateEffectiveRateFromFlat(decimal principal, int tenorMonths, decimal annualFlatRatePercentage)
