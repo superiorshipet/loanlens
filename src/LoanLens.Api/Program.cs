@@ -33,12 +33,284 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configure OpenAPI specification
+// Configure OpenAPI specification with clean, realistic default examples for Postman
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, cancellationToken) =>
     {
         document.Servers = [new() { Url = "http://localhost:5257" }];
+        return Task.CompletedTask;
+    });
+
+    options.AddOperationTransformer((operation, context, cancellationToken) =>
+    {
+        var path = context.Description.RelativePath?.TrimStart('/');
+        if (operation.RequestBody?.Content != null && operation.RequestBody.Content.TryGetValue("application/json", out var mediaType))
+        {
+            var exampleJson = path switch
+            {
+                "api/loans/calculate" => """
+                {
+                  "principal": 100000,
+                  "tenorMonths": 24,
+                  "annualInterestRatePercentage": 22.0,
+                  "calculationMethod": 1,
+                  "rateType": 1,
+                  "adminFeePercentage": 1.5
+                }
+                """,
+                "api/loans/affordability" or "api/loans/stress-test" => """
+                {
+                  "profile": {
+                    "monthlyIncome": 25000,
+                    "age": 32,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 9000,
+                    "currentMonthlyInstallments": 1500,
+                    "savings": 40000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  },
+                  "loan": {
+                    "principal": 100000,
+                    "tenorMonths": 36,
+                    "annualInterestRatePercentage": 22.0,
+                    "calculationMethod": 1,
+                    "rateType": 1,
+                    "adminFeePercentage": 1.5
+                  }
+                }
+                """,
+                "api/loans/monte-carlo" => """
+                {
+                  "profile": {
+                    "monthlyIncome": 25000,
+                    "age": 32,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 9000,
+                    "currentMonthlyInstallments": 1500,
+                    "savings": 40000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  },
+                  "loan": {
+                    "principal": 100000,
+                    "tenorMonths": 36,
+                    "annualInterestRatePercentage": 22.0,
+                    "calculationMethod": 1,
+                    "rateType": 1,
+                    "adminFeePercentage": 1.5
+                  },
+                  "iterations": 5000
+                }
+                """,
+                "api/loans/full-analysis" => """
+                {
+                  "customerName": "أحمد علي",
+                  "profile": {
+                    "monthlyIncome": 30000,
+                    "age": 32,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 10000,
+                    "currentMonthlyInstallments": 2000,
+                    "savings": 50000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  },
+                  "loan": {
+                    "principal": 150000,
+                    "tenorMonths": 36,
+                    "annualInterestRatePercentage": 22.0,
+                    "calculationMethod": 1,
+                    "rateType": 1,
+                    "adminFeePercentage": 1.5
+                  },
+                  "includeAiNarrative": false
+                }
+                """,
+                "api/loans/export-pdf" or "api/loans/save-scenario" => """
+                {
+                  "customerName": "أحمد علي",
+                  "profile": {
+                    "monthlyIncome": 30000,
+                    "age": 32,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 10000,
+                    "currentMonthlyInstallments": 2000,
+                    "savings": 50000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  },
+                  "loan": {
+                    "principal": 150000,
+                    "tenorMonths": 36,
+                    "annualInterestRatePercentage": 22.0,
+                    "calculationMethod": 1,
+                    "rateType": 1,
+                    "adminFeePercentage": 1.5
+                  }
+                }
+                """,
+                "api/loans/compare" => """
+                {
+                  "scenarioAName": "البنك الأهلي المصري (36 شهر بفائدة 22%)",
+                  "scenarioBName": "بنك مصر (24 شهر بفائدة 21%)",
+                  "scenarioA": {
+                    "profile": {
+                      "monthlyIncome": 30000,
+                      "age": 32,
+                      "stability": 1,
+                      "fixedMonthlyExpenses": 10000,
+                      "currentMonthlyInstallments": 2000,
+                      "savings": 50000,
+                      "dependentsCount": 1,
+                      "hasHealthInsurance": true
+                    },
+                    "loan": {
+                      "principal": 120000,
+                      "tenorMonths": 36,
+                      "annualInterestRatePercentage": 22.0,
+                      "calculationMethod": 1,
+                      "rateType": 1,
+                      "adminFeePercentage": 1.5
+                    }
+                  },
+                  "scenarioB": {
+                    "profile": {
+                      "monthlyIncome": 30000,
+                      "age": 32,
+                      "stability": 1,
+                      "fixedMonthlyExpenses": 10000,
+                      "currentMonthlyInstallments": 2000,
+                      "savings": 50000,
+                      "dependentsCount": 1,
+                      "hasHealthInsurance": true
+                    },
+                    "loan": {
+                      "principal": 120000,
+                      "tenorMonths": 24,
+                      "annualInterestRatePercentage": 21.0,
+                      "calculationMethod": 1,
+                      "rateType": 1,
+                      "adminFeePercentage": 1.5
+                    }
+                  }
+                }
+                """,
+                "api/loans/borrowing-capacity" => """
+                {
+                  "targetInterestRatePercentage": 22.0,
+                  "targetTenorMonths": 60,
+                  "calculationMethod": 1,
+                  "profile": {
+                    "monthlyIncome": 35000,
+                    "age": 34,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 12000,
+                    "currentMonthlyInstallments": 3000,
+                    "savings": 50000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  }
+                }
+                """,
+                "api/loans/debt-consolidation" => """
+                {
+                  "profile": {
+                    "monthlyIncome": 35000,
+                    "age": 35,
+                    "stability": 1,
+                    "fixedMonthlyExpenses": 12000,
+                    "currentMonthlyInstallments": 11500,
+                    "savings": 40000,
+                    "dependentsCount": 1,
+                    "hasHealthInsurance": true
+                  },
+                  "existingDebts": [
+                    {
+                      "debtName": "فيزا مشتريات CIB",
+                      "remainingPrincipal": 50000,
+                      "monthlyInstallment": 4500,
+                      "remainingMonths": 24,
+                      "earlySettlementFeePercentage": 0.0
+                    },
+                    {
+                      "debtName": "قرض سيارة قديم",
+                      "remainingPrincipal": 90000,
+                      "monthlyInstallment": 7000,
+                      "remainingMonths": 18,
+                      "earlySettlementFeePercentage": 3.0
+                    }
+                  ],
+                  "targetOffer": {
+                    "providerName": "البنك الأهلي المصري (برنامج شراء المديونية)",
+                    "annualInterestRatePercentage": 21.0,
+                    "tenorMonths": 60,
+                    "adminFeePercentage": 1.0,
+                    "calculationMethod": 1
+                  }
+                }
+                """,
+                "api/loans/rate-sensitivity" => """
+                {
+                  "loan": {
+                    "principal": 250000,
+                    "tenorMonths": 48,
+                    "annualInterestRatePercentage": 22.5,
+                    "calculationMethod": 1,
+                    "rateType": 2,
+                    "adminFeePercentage": 1.5
+                  }
+                }
+                """,
+                "api/loans/export-excel" => """
+                {
+                  "customerName": "أحمد علي",
+                  "loan": {
+                    "principal": 150000,
+                    "tenorMonths": 36,
+                    "annualInterestRatePercentage": 22.0,
+                    "calculationMethod": 1,
+                    "rateType": 1,
+                    "adminFeePercentage": 1.5
+                  }
+                }
+                """,
+                "api/loans/ai-advice" => """
+                {
+                  "analysisRequest": {
+                    "customerName": "أحمد علي",
+                    "profile": {
+                      "monthlyIncome": 30000,
+                      "age": 32,
+                      "stability": 1,
+                      "fixedMonthlyExpenses": 10000,
+                      "currentMonthlyInstallments": 2000,
+                      "savings": 50000,
+                      "dependentsCount": 1,
+                      "hasHealthInsurance": true
+                    },
+                    "loan": {
+                      "principal": 150000,
+                      "tenorMonths": 36,
+                      "annualInterestRatePercentage": 22.0,
+                      "calculationMethod": 1,
+                      "rateType": 1,
+                      "adminFeePercentage": 1.5
+                    }
+                  },
+                  "customQuestion": "هل تنصحني بزيادة مدة السداد لـ 4 سنين لتقليل القسط الشهري، ولا الفايدة الزيادة مش مستاهلة؟"
+                }
+                """,
+                _ => null
+            };
+
+            if (exampleJson != null)
+            {
+                mediaType.Example = System.Text.Json.Nodes.JsonNode.Parse(exampleJson);
+            }
+        }
+
         return Task.CompletedTask;
     });
 });
