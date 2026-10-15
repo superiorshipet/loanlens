@@ -40,7 +40,7 @@ public class EngineFeaturesTests
         Assert.Equal(7, summary.TotalScenariosTested);
         Assert.True(summary.ScenariosSurvived < summary.TotalScenariosTested);
         // Medical emergency (25k) should fail when savings are only 5k
-        var medicalScenario = summary.Scenarios.First(s => s.ScenarioName.Contains("علاج"));
+        var medicalScenario = summary.Scenarios.First(s => s.ScenarioName.Contains("Medical") || s.ScenarioName.Contains("علاج"));
         Assert.False(medicalScenario.IsSurviving);
     }
 

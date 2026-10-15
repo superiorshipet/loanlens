@@ -1,6 +1,7 @@
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
 using LoanLens.Domain.Enums;
+using LoanLens.Domain.Localization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -39,9 +40,12 @@ public class LoanPdfReportService : IPdfReportService
         }
     }
 
-    public byte[] GenerateReportPdf(ComprehensiveLoanReportDto report, string? customerName = null)
+    public byte[] GenerateReportPdf(ComprehensiveLoanReportDto report, string? customerName = null, string language = "en")
     {
         ArgumentNullException.ThrowIfNull(report);
+
+        var isAr = LoanLensLanguage.IsArabic(language);
+        var currency = isAr ? "ج.م" : "EGP";
 
         var document = Document.Create(container =>
         {
@@ -52,20 +56,20 @@ public class LoanPdfReportService : IPdfReportService
                 page.DefaultTextStyle(x => x.FontFamily("Noto Sans Arabic", "DejaVu Sans", "Arial").FontSize(10).FontColor(Colors.Grey.Darken3));
 
                 // Header
-                page.Header().Element(c => ComposeHeader(c, report, customerName));
+                page.Header().Element(c => ComposeHeader(c, report, customerName, isAr));
 
                 // Content
-                page.Content().Element(c => ComposeContent(c, report));
+                page.Content().Element(c => ComposeContent(c, report, isAr, currency));
 
                 // Footer
-                page.Footer().Element(ComposeFooter);
+                page.Footer().Element(c => ComposeFooter(c, isAr));
             });
         });
 
         return document.GeneratePdf();
     }
 
-    private static void ComposeHeader(IContainer container, ComprehensiveLoanReportDto report, string? customerName)
+    private static void ComposeHeader(IContainer container, ComprehensiveLoanReportDto report, string? customerName, bool isAr)
     {
         container.Row(row =>
         {
@@ -73,53 +77,53 @@ public class LoanPdfReportService : IPdfReportService
             {
                 col.Item().Text("LoanLens | Financial Advisor")
                    .FontSize(20).Bold().FontColor(Colors.Blue.Darken3);
-                col.Item().Text("تقرير التحليل المالي ومخاطر الائتمان الاستهلاكي")
+                col.Item().Text(isAr ? "تقرير التحليل المالي ومخاطر الائتمان الاستهلاكي" : "Consumer Credit Risk & Financial Feasibility Report")
                    .FontSize(11).FontColor(Colors.Grey.Darken1);
             });
 
             row.RelativeItem().AlignRight().Column(col =>
             {
-                col.Item().Text($"التاريخ: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
+                col.Item().Text(isAr ? $"التاريخ: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC" : $"Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
                    .FontSize(9).FontColor(Colors.Grey.Medium);
                 if (!string.IsNullOrWhiteSpace(customerName))
                 {
-                    col.Item().Text($"العميل: {customerName}")
+                    col.Item().Text(isAr ? $"العميل: {customerName}" : $"Client: {customerName}")
                        .FontSize(10).Bold().FontColor(Colors.Grey.Darken3);
                 }
             });
         });
     }
 
-    private static void ComposeContent(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeContent(IContainer container, ComprehensiveLoanReportDto report, bool isAr, string currency)
     {
         container.PaddingVertical(10).Column(column =>
         {
             column.Spacing(12);
 
             // 1. Verdict & Risk Score Card
-            column.Item().Element(c => ComposeVerdictBanner(c, report));
+            column.Item().Element(c => ComposeVerdictBanner(c, report, isAr));
 
             // 2. Financial Metrics Matrix (4 Key Cards)
-            column.Item().Element(c => ComposeMetricsGrid(c, report));
+            column.Item().Element(c => ComposeMetricsGrid(c, report, isAr, currency));
 
             // 3. Stress Testing Summary Table
-            column.Item().Element(c => ComposeStressTestTable(c, report));
+            column.Item().Element(c => ComposeStressTestTable(c, report, isAr));
 
             // 4. Monte Carlo Simulation Highlights
-            column.Item().Element(c => ComposeMonteCarloSection(c, report));
+            column.Item().Element(c => ComposeMonteCarloSection(c, report, isAr, currency));
 
             // 5. Alternatives Comparison Table
             if (report.Recommendation.TopAlternatives.Count > 0)
             {
-                column.Item().Element(c => ComposeAlternativesTable(c, report));
+                column.Item().Element(c => ComposeAlternativesTable(c, report, isAr, currency));
             }
 
             // 6. Actionable Advice
-            column.Item().Element(c => ComposeAdviceSection(c, report));
+            column.Item().Element(c => ComposeAdviceSection(c, report, isAr));
         });
     }
 
-    private static void ComposeVerdictBanner(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeVerdictBanner(IContainer container, ComprehensiveLoanReportDto report, bool isAr)
     {
         var risk = report.RiskEvaluation;
         var verdict = report.Recommendation;
@@ -142,14 +146,14 @@ public class LoanPdfReportService : IPdfReportService
 
             row.RelativeItem(1).AlignRight().Column(col =>
             {
-                col.Item().Text("مؤشر المخاطر").FontSize(9).FontColor(textColor);
+                col.Item().Text(isAr ? "مؤشر المخاطر" : "Risk Index").FontSize(9).FontColor(textColor);
                 col.Item().Text($"{risk.TotalRiskScore:0}/100").FontSize(22).Bold().FontColor(textColor);
                 col.Item().Text(risk.RiskLabel).FontSize(9).Bold().FontColor(textColor);
             });
         });
     }
 
-    private static void ComposeMetricsGrid(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeMetricsGrid(IContainer container, ComprehensiveLoanReportDto report, bool isAr, string currency)
     {
         container.Row(row =>
         {
@@ -158,47 +162,47 @@ public class LoanPdfReportService : IPdfReportService
             // Card 1: Principal & Installment
             row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(8).Column(col =>
             {
-                col.Item().Text("مبلغ القرض المطلوب").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.LoanDetails.Principal:N0} ج.م").FontSize(12).Bold();
-                col.Item().PaddingTop(4).Text("القسط الشهري").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.AmortizationSchedule.MonthlyInstallment:N0} ج.م").FontSize(12).Bold().FontColor(Colors.Blue.Darken2);
+                col.Item().Text(isAr ? "مبلغ القرض المطلوب" : "Requested Principal").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text($"{report.LoanDetails.Principal:N0} {currency}").FontSize(12).Bold();
+                col.Item().PaddingTop(4).Text(isAr ? "القسط الشهري" : "Monthly Installment").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text($"{report.AmortizationSchedule.MonthlyInstallment:N0} {currency}").FontSize(12).Bold().FontColor(Colors.Blue.Darken2);
             });
 
             // Card 2: DTI & Cash Flow
             row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(8).Column(col =>
             {
-                col.Item().Text("نسبة عبء الدين (DTI)").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text(isAr ? "نسبة عبء الدين (DTI)" : "Debt-to-Income (DTI)").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
                 col.Item().Text($"{report.Affordability.DtiPercentage:0.0}%").FontSize(12).Bold()
                    .FontColor(report.Affordability.DtiPercentage > 40 ? Colors.Red.Darken2 : Colors.Green.Darken2);
-                col.Item().PaddingTop(4).Text("الدخل المتبقي بعد القسط").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.Affordability.DisposableIncomeAfterInstallment:N0} ج.م").FontSize(12).Bold();
+                col.Item().PaddingTop(4).Text(isAr ? "الدخل المتبقي بعد القسط" : "Net Disposable Income").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text($"{report.Affordability.DisposableIncomeAfterInstallment:N0} {currency}").FontSize(12).Bold();
             });
 
             // Card 3: Rates & Term
             row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(8).Column(col =>
             {
-                col.Item().Text("المدة وسعر الفائدة").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.LoanDetails.TenorMonths} شهر @ {report.LoanDetails.AnnualInterestRatePercentage}%").FontSize(10.5f).Bold();
-                col.Item().PaddingTop(4).Text("الفائدة الفعلية (APR)").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text(isAr ? "المدة وسعر الفائدة" : "Tenor & Annual Rate").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text(isAr ? $"{report.LoanDetails.TenorMonths} شهر @ {report.LoanDetails.AnnualInterestRatePercentage}%" : $"{report.LoanDetails.TenorMonths} Mos @ {report.LoanDetails.AnnualInterestRatePercentage}%").FontSize(10.5f).Bold();
+                col.Item().PaddingTop(4).Text(isAr ? "الفائدة الفعلية (APR)" : "Effective Rate (APR)").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
                 col.Item().Text($"{report.AmortizationSchedule.EffectiveAnnualRatePercentage:0.0}%").FontSize(11).Bold().FontColor(Colors.Purple.Darken2);
             });
 
             // Card 4: Runway & Total Interest
             row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(8).Column(col =>
             {
-                col.Item().Text("شهور الأمان (Runway)").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.Affordability.EmergencyRunwayMonths:0.0} شهور").FontSize(12).Bold();
-                col.Item().PaddingTop(4).Text("إجمالي الفائدة المدفوعة").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{report.AmortizationSchedule.TotalInterest:N0} ج.م").FontSize(11).Bold().FontColor(Colors.Grey.Darken3);
+                col.Item().Text(isAr ? "شهور الأمان (Runway)" : "Emergency Runway").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text(isAr ? $"{report.Affordability.EmergencyRunwayMonths:0.0} شهور" : $"{report.Affordability.EmergencyRunwayMonths:0.0} Months").FontSize(12).Bold();
+                col.Item().PaddingTop(4).Text(isAr ? "إجمالي الفائدة المدفوعة" : "Total Interest Paid").FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                col.Item().Text($"{report.AmortizationSchedule.TotalInterest:N0} {currency}").FontSize(11).Bold().FontColor(Colors.Grey.Darken3);
             });
         });
     }
 
-    private static void ComposeStressTestTable(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeStressTestTable(IContainer container, ComprehensiveLoanReportDto report, bool isAr)
     {
         container.Column(col =>
         {
-            col.Item().Text("نتائج محاكاة الصدمات المالية (Stress Testing)").FontSize(11).Bold().FontColor(Colors.Blue.Darken3);
+            col.Item().Text(isAr ? "نتائج محاكاة الصدمات المالية (Stress Testing)" : "Financial Stress Testing Simulation Shocks").FontSize(11).Bold().FontColor(Colors.Blue.Darken3);
 
             col.Item().PaddingTop(4).Table(table =>
             {
@@ -211,15 +215,17 @@ public class LoanPdfReportService : IPdfReportService
 
                 table.Header(header =>
                 {
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("السيناريو").Bold().FontSize(8.5f);
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("الحالة").Bold().FontSize(8.5f);
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("التأثير والأثر على المدخرات").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "السيناريو" : "Scenario").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "الحالة" : "Status").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "التأثير والأثر على المدخرات" : "Shock Impact & Reserve Status").Bold().FontSize(8.5f);
                 });
 
                 foreach (var s in report.StressTest.Scenarios)
                 {
                     var statusColor = s.IsSurviving ? Colors.Green.Darken2 : Colors.Red.Darken2;
-                    var statusText = s.IsSurviving ? "نجاح" : "تعثر";
+                    var statusText = s.IsSurviving 
+                        ? (isAr ? "نجاح" : "Surpassed") 
+                        : (isAr ? "تعثر" : "Defaulted");
 
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(s.ScenarioName).FontSize(8.5f);
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(statusText).Bold().FontColor(statusColor).FontSize(8.5f);
@@ -229,33 +235,38 @@ public class LoanPdfReportService : IPdfReportService
         });
     }
 
-    private static void ComposeMonteCarloSection(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeMonteCarloSection(IContainer container, ComprehensiveLoanReportDto report, bool isAr, string currency)
     {
         var mc = report.MonteCarlo;
 
         container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(col =>
         {
-            col.Item().Text($"محاكاة مونت كارلو العشوائية ({mc.TotalIterations:N0} مسار محاكى)").FontSize(10.5f).Bold().FontColor(Colors.Blue.Darken3);
+            col.Item().Text(isAr 
+                ? $"محاكاة مونت كارلو العشوائية ({mc.TotalIterations:N0} مسار محاكى)" 
+                : $"Monte Carlo Stochastic Simulation ({mc.TotalIterations:N0} Paths)").FontSize(10.5f).Bold().FontColor(Colors.Blue.Darken3);
 
             col.Item().PaddingTop(4).Row(row =>
             {
-                row.RelativeItem().Text($"احتمالية التعثر: {mc.DefaultProbabilityPercentage:0.0}%")
+                row.RelativeItem().Text(isAr ? $"احتمالية التعثر: {mc.DefaultProbabilityPercentage:0.0}%" : $"Default Probability: {mc.DefaultProbabilityPercentage:0.0}%")
                    .Bold().FontColor(mc.DefaultProbabilityPercentage > 10 ? Colors.Red.Darken2 : Colors.Green.Darken2);
 
-                row.RelativeItem().Text($"أخطر شهر متوقع: {(mc.PeakRiskMonth.HasValue ? $"الشهر {mc.PeakRiskMonth}" : "لا يوجد")}")
+                var peakText = mc.PeakRiskMonth.HasValue 
+                    ? (isAr ? $"الشهر {mc.PeakRiskMonth}" : $"Month {mc.PeakRiskMonth}") 
+                    : (isAr ? "لا يوجد" : "None");
+                row.RelativeItem().Text(isAr ? $"أخطر شهر متوقع: {peakText}" : $"Peak Risk Month: {peakText}")
                    .FontSize(9).FontColor(Colors.Grey.Darken3);
 
-                row.RelativeItem().Text($"متوسط الرصيد النهائي: {mc.MedianEndingSavings:N0} ج.م")
+                row.RelativeItem().Text(isAr ? $"متوسط الرصيد النهائي: {mc.MedianEndingSavings:N0} {currency}" : $"Median Ending Savings: {mc.MedianEndingSavings:N0} {currency}")
                    .FontSize(9).FontColor(Colors.Grey.Darken3);
             });
         });
     }
 
-    private static void ComposeAlternativesTable(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeAlternativesTable(IContainer container, ComprehensiveLoanReportDto report, bool isAr, string currency)
     {
         container.Column(col =>
         {
-            col.Item().Text("مقارنة البدائل المتاحة في السوق المصري").FontSize(11).Bold().FontColor(Colors.Blue.Darken3);
+            col.Item().Text(isAr ? "مقارنة البدائل المتاحة في السوق المصري" : "Egyptian Market Alternative Products Comparison").FontSize(11).Bold().FontColor(Colors.Blue.Darken3);
 
             col.Item().PaddingTop(4).Table(table =>
             {
@@ -269,21 +280,27 @@ public class LoanPdfReportService : IPdfReportService
 
                 table.Header(header =>
                 {
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("الجهة والمنتج").Bold().FontSize(8.5f);
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("القسط الشهري").Bold().FontSize(8.5f);
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("الفائدة الفعلية").Bold().FontSize(8.5f);
-                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("مقارنة بالقرض الحالي").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "الجهة والمنتج" : "Provider & Product").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "القسط الشهري" : "Monthly Installment").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "الفائدة الفعلية" : "Effective APR").Bold().FontSize(8.5f);
+                    header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(isAr ? "مقارنة بالقرض الحالي" : "Comparison vs Current").Bold().FontSize(8.5f);
                 });
 
                 foreach (var alt in report.Recommendation.TopAlternatives.Take(4))
                 {
-                    var diffText = alt.IsCheaperThanCurrent
-                        ? $"أرخص بـ {alt.CostDifferenceComparedToCurrent:N0} ج.م"
-                        : $"أغلى بـ {alt.CostDifferenceComparedToCurrent:N0} ج.م";
+                    string diffText;
+                    if (alt.IsCheaperThanCurrent)
+                    {
+                        diffText = isAr ? $"أرخص بـ {alt.CostDifferenceComparedToCurrent:N0} {currency}" : $"Saves {alt.CostDifferenceComparedToCurrent:N0} {currency}";
+                    }
+                    else
+                    {
+                        diffText = isAr ? $"أغلى بـ {alt.CostDifferenceComparedToCurrent:N0} {currency}" : $"+{alt.CostDifferenceComparedToCurrent:N0} {currency} more";
+                    }
                     var diffColor = alt.IsCheaperThanCurrent ? Colors.Green.Darken2 : Colors.Grey.Darken2;
 
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.Product.ProviderName}").FontSize(8.5f);
-                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.MonthlyInstallment:N0} ج.م").FontSize(8.5f);
+                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.MonthlyInstallment:N0} {currency}").FontSize(8.5f);
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text($"{alt.EffectiveAprPercentage:0.0}%").FontSize(8.5f);
                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(diffText).Bold().FontColor(diffColor).FontSize(8.5f);
                 }
@@ -291,11 +308,11 @@ public class LoanPdfReportService : IPdfReportService
         });
     }
 
-    private static void ComposeAdviceSection(IContainer container, ComprehensiveLoanReportDto report)
+    private static void ComposeAdviceSection(IContainer container, ComprehensiveLoanReportDto report, bool isAr)
     {
         container.Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(8).Column(col =>
         {
-            col.Item().Text("نصائح عملية هامة").FontSize(10).Bold().FontColor(Colors.Blue.Darken3);
+            col.Item().Text(isAr ? "نصائح عملية هامة" : "Key Actionable Advice & Recommendations").FontSize(10).Bold().FontColor(Colors.Blue.Darken3);
             foreach (var advice in report.Recommendation.KeyActionableAdvice)
             {
                 col.Item().PaddingTop(2).Text($"• {advice}").FontSize(8.5f);
@@ -303,21 +320,33 @@ public class LoanPdfReportService : IPdfReportService
         });
     }
 
-    private static void ComposeFooter(IContainer container)
+    private static void ComposeFooter(IContainer container, bool isAr)
     {
         container.Column(col =>
         {
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             col.Item().PaddingTop(3).Row(row =>
             {
-                row.RelativeItem(3).Text("إخلاء مسؤولية: هذا التقرير أداة استرشادية مساعدة للقرار المالي ولا يعد استشارة رسمية ملزمة. البيانات المالية سرية ومحمية.")
+                row.RelativeItem(3).Text(isAr 
+                    ? "إخلاء مسؤولية: هذا التقرير أداة استرشادية مساعدة للقرار المالي ولا يعد استشارة رسمية ملزمة. البيانات المالية سرية ومحمية."
+                    : "Disclaimer: This report is an advisory decision-support tool and does not constitute formal binding financial advice. Financial data is confidential.")
                    .FontSize(7.5f).FontColor(Colors.Grey.Medium);
                 row.RelativeItem(1).AlignRight().Text(x =>
                 {
-                    x.Span("صفحة ");
-                    x.CurrentPageNumber();
-                    x.Span(" من ");
-                    x.TotalPages();
+                    if (isAr)
+                    {
+                        x.Span("صفحة ");
+                        x.CurrentPageNumber();
+                        x.Span(" من ");
+                        x.TotalPages();
+                    }
+                    else
+                    {
+                        x.Span("Page ");
+                        x.CurrentPageNumber();
+                        x.Span(" of ");
+                        x.TotalPages();
+                    }
                 });
             });
         });

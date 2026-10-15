@@ -44,14 +44,14 @@ public class LoanAdvisorService : ILoanAdvisorService
         return _affordabilityAnalyzer.Analyze(profileDto.ToDomain(), installment);
     }
 
-    public StressTestSummary RunStressTest(UserProfileDto profileDto, LoanInputDto loanDto)
+    public StressTestSummary RunStressTest(UserProfileDto profileDto, LoanInputDto loanDto, string language = "en")
     {
         ArgumentNullException.ThrowIfNull(profileDto);
         ArgumentNullException.ThrowIfNull(loanDto);
 
         var loan = loanDto.ToDomain();
         var installment = _calculator.CalculateMonthlyInstallment(loan);
-        return _stressTestingEngine.RunAllScenarios(profileDto.ToDomain(), loan, installment);
+        return _stressTestingEngine.RunAllScenarios(profileDto.ToDomain(), loan, installment, language);
     }
 
     public MonteCarloSimulationResult RunMonteCarlo(UserProfileDto profileDto, LoanInputDto loanDto, int iterations = 5000)
@@ -64,10 +64,11 @@ public class LoanAdvisorService : ILoanAdvisorService
         return _monteCarloEngine.RunSimulation(profileDto.ToDomain(), loan, installment, iterations);
     }
 
-    public ComprehensiveLoanReportDto GenerateFullReport(LoanAnalysisRequestDto request)
+    public ComprehensiveLoanReportDto GenerateFullReport(LoanAnalysisRequestDto request, string language = "en")
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var effectiveLang = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : language;
         var profile = request.Profile.ToDomain();
         var loan = request.Loan.ToDomain();
 
@@ -78,16 +79,16 @@ public class LoanAdvisorService : ILoanAdvisorService
         var affordability = _affordabilityAnalyzer.Analyze(profile, schedule.MonthlyInstallment);
 
         // 3. Stress Test
-        var stressTest = _stressTestingEngine.RunAllScenarios(profile, loan, schedule.MonthlyInstallment);
+        var stressTest = _stressTestingEngine.RunAllScenarios(profile, loan, schedule.MonthlyInstallment, effectiveLang);
 
         // 4. Monte Carlo Simulation
         var monteCarlo = _monteCarloEngine.RunSimulation(profile, loan, schedule.MonthlyInstallment, request.MonteCarloIterations);
 
         // 5. Evaluate Composite Risk
-        var risk = _riskScoringEngine.Evaluate(profile, affordability, stressTest, monteCarlo);
+        var risk = _riskScoringEngine.Evaluate(profile, affordability, stressTest, monteCarlo, effectiveLang);
 
         // 6. Generate Recommendations & Alternative Comparisons
-        var recommendation = _recommendationEngine.GenerateDecision(profile, loan, schedule, affordability, risk);
+        var recommendation = _recommendationEngine.GenerateDecision(profile, loan, schedule, affordability, risk, effectiveLang);
 
         return new ComprehensiveLoanReportDto(
             LoanDetails: loan,
@@ -102,8 +103,8 @@ public class LoanAdvisorService : ILoanAdvisorService
         );
     }
 
-    public IReadOnlyList<LoanProduct> GetLoanCatalog()
+    public IReadOnlyList<LoanProduct> GetLoanCatalog(string language = "en")
     {
-        return _recommendationEngine.GetCatalog();
+        return _recommendationEngine.GetCatalog(language);
     }
 }

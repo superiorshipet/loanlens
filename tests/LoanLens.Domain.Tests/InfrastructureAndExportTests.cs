@@ -145,5 +145,66 @@ public class InfrastructureAndExportTests
         Assert.True(errors.ContainsKey("profile.dependentsCount"));
         Assert.True(errors.ContainsKey("profile.age"));
         Assert.True(errors.ContainsKey("monteCarloIterations"));
+
+        // Default language is English
+        Assert.Contains("greater than zero", errors["loan.principal"][0]);
+    }
+
+    [Fact]
+    public void BilingualEngines_DefaultToEnglish_AndSupportArabicExplicitly()
+    {
+        var calc = new FinancialCalculator();
+        var recEngine = new RecommendationEngine(calc);
+        var stressEngine = new StressTestingEngine();
+        var riskEngine = new RiskScoringEngine();
+
+        var profile = new FinancialProfile(30000m, IncomeStability.StableEmployed, 10000m, 1000m, 50000m, 1, 30);
+        var loan = new LoanParameters(50000m, 24, 18m, InterestCalculationMethod.Reducing);
+        var installment = calc.CalculateMonthlyInstallment(loan);
+        var affordability = new AffordabilityAnalyzer().Analyze(profile, installment);
+        var mc = new MonteCarloEngine().RunSimulation(profile, loan, installment, 100);
+
+        // 1. Catalog
+        var enCatalog = recEngine.GetCatalog("en");
+        var arCatalog = recEngine.GetCatalog("ar");
+        Assert.Contains(enCatalog, p => p.ProviderName.Contains("National Bank of Egypt"));
+        Assert.Contains(arCatalog, p => p.ProviderName.Contains("البنك الأهلي المصري"));
+
+        // 2. Stress Testing
+        var enStress = stressEngine.RunAllScenarios(profile, loan, installment, "en");
+        var arStress = stressEngine.RunAllScenarios(profile, loan, installment, "ar");
+        Assert.Contains(enStress.Scenarios, s => s.ScenarioName.Contains("Medical"));
+        Assert.Contains(arStress.Scenarios, s => s.ScenarioName.Contains("علاج"));
+
+        // 3. Risk Evaluation
+        var enRisk = riskEngine.Evaluate(profile, affordability, enStress, mc, "en");
+        var arRisk = riskEngine.Evaluate(profile, affordability, arStress, mc, "ar");
+        Assert.Equal("Safe", enRisk.RiskLabel);
+        Assert.Equal("آمن (Safe)", arRisk.RiskLabel);
+
+        // 4. Validator
+        var enErrors = LoanRequestValidator.Validate((LoanInputDto?)null, "en");
+        var arErrors = LoanRequestValidator.Validate((LoanInputDto?)null, "ar");
+        Assert.Equal("Loan details are required.", enErrors["loan"][0]);
+        Assert.Equal("بيانات القرض مطلوبة.", arErrors["loan"][0]);
+    }
+
+    [Fact]
+    public void PdfReportService_GeneratesBothEnglishAndArabicPdfs()
+    {
+        var service = new LoanPdfReportService();
+        var reportEn = CreateSampleReport();
+
+        // English PDF (Default)
+        var enPdf = service.GenerateReportPdf(reportEn, "John Doe", "en");
+        Assert.NotNull(enPdf);
+        Assert.True(enPdf.Length > 2000);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(enPdf.AsSpan(0, 4)));
+
+        // Arabic PDF
+        var arPdf = service.GenerateReportPdf(reportEn, "أحمد محمود", "ar");
+        Assert.NotNull(arPdf);
+        Assert.True(arPdf.Length > 2000);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(arPdf.AsSpan(0, 4)));
     }
 }

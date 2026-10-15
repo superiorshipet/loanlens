@@ -3,6 +3,7 @@ using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
 using LoanLens.Application.Services;
 using LoanLens.Application.Validation;
+using LoanLens.Domain.Localization;
 using LoanLens.Infrastructure;
 using LoanLens.Infrastructure.Persistence;
 using Scalar.AspNetCore;
@@ -49,10 +50,13 @@ app.Use(async (context, next) =>
         var statusCode = ex is ArgumentException or FormatException ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
         context.Response.StatusCode = statusCode;
 
+        var isAr = ResolveLanguage(context) == LoanLensLanguage.Arabic;
         var problem = new
         {
             type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-            title = statusCode == 400 ? "بيانات المدخلات غير صحيحة" : "خطأ غير متوقع في الخادم",
+            title = statusCode == 400 
+                ? (isAr ? "بيانات المدخلات غير صحيحة" : "Invalid request parameters") 
+                : (isAr ? "خطأ غير متوقع في الخادم" : "An unexpected server error occurred"),
             status = statusCode,
             detail = ex.Message,
             instance = context.Request.Path.Value
@@ -93,11 +97,12 @@ var loanGroup = app.MapGroup("/api/loans")
                    .WithTags("Loans Financial Advisor Engine");
 
 // 1. Calculate Amortization Schedule
-loanGroup.MapPost("/calculate", (LoanInputDto request, ILoanAdvisorService service) =>
+loanGroup.MapPost("/calculate", (LoanInputDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request);
+    var lang = ResolveLanguage(context);
+    var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات القرض غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات القرض غير صالحة" : "Invalid loan parameters");
 
     var schedule = service.CalculateSchedule(request);
     return Results.Ok(schedule);
@@ -107,11 +112,12 @@ loanGroup.MapPost("/calculate", (LoanInputDto request, ILoanAdvisorService servi
 .WithDescription("Computes monthly installment, principal/interest breakdown, and converts Flat rate to effective APR/EAR.");
 
 // 2. Analyze Affordability (DTI & Emergency Runway)
-loanGroup.MapPost("/affordability", (AffordabilityRequestDto request, ILoanAdvisorService service) =>
+loanGroup.MapPost("/affordability", (AffordabilityRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    var lang = ResolveLanguage(context);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
     var metrics = service.AnalyzeAffordability(request!.Profile, request.Loan);
     return Results.Ok(metrics);
@@ -121,13 +127,14 @@ loanGroup.MapPost("/affordability", (AffordabilityRequestDto request, ILoanAdvis
 .WithDescription("Checks Debt-To-Income against CBE 50% limit and assesses disposable income and emergency runway months.");
 
 // 3. Run Deterministic Stress Testing Shocks
-loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, ILoanAdvisorService service) =>
+loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    var lang = ResolveLanguage(context);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
-    var summary = service.RunStressTest(request!.Profile, request.Loan);
+    var summary = service.RunStressTest(request!.Profile, request.Loan, lang);
     return Results.Ok(summary);
 })
 .WithName("RunStressTest")
@@ -135,15 +142,16 @@ loanGroup.MapPost("/stress-test", (AffordabilityRequestDto request, ILoanAdvisor
 .WithDescription("Tests resilience against medical emergencies, job loss (1/3/6 months), income reduction (25%), inflation, and combined crisis.");
 
 // 4. Run Stochastic Monte Carlo Simulation
-loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, ILoanAdvisorService service) =>
+loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    var lang = ResolveLanguage(context);
+    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan, lang);
     if (request is not null && (request.Iterations <= 0 || request.Iterations > 50000))
     {
-        errors["iterations"] = ["عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة."];
+        errors["iterations"] = [LoanLensLanguage.IsArabic(lang) ? "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة." : "Monte Carlo iterations must be between 100 and 50,000."];
     }
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
     var result = service.RunMonteCarlo(request!.Profile, request.Loan, request.Iterations);
     return Results.Ok(result);
@@ -153,13 +161,14 @@ loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, ILoanAdvisorSer
 .WithDescription("Simulates 5,000+ stochastic life paths, returning default probability %, peak risk month, and 5th/50th/95th percentile savings.");
 
 // 5. Generate 360° Comprehensive Advisor Report
-loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, ILoanAdvisorService service) =>
+loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request);
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
-    var report = service.GenerateFullReport(request!);
+    var report = service.GenerateFullReport(request!, lang);
     return Results.Ok(report);
 })
 .WithName("GenerateFullAnalysis")
@@ -167,9 +176,10 @@ loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, ILoanAdviso
 .WithDescription("Executes complete financial advisory pipeline: Amortization, Affordability, Stress Testing, Monte Carlo, 0-100 Risk Score, Strategy Options, Catalog Alternatives, and Final Decision.");
 
 // 6. Get Loan Products Catalog
-loanGroup.MapGet("/catalog", (ILoanAdvisorService service) =>
+loanGroup.MapGet("/catalog", (HttpContext context, ILoanAdvisorService service) =>
 {
-    var catalog = service.GetLoanCatalog();
+    var lang = ResolveLanguage(context);
+    var catalog = service.GetLoanCatalog(lang);
     return Results.Ok(catalog);
 })
 .WithName("GetLoanCatalog")
@@ -177,14 +187,15 @@ loanGroup.MapGet("/catalog", (ILoanAdvisorService service) =>
 .WithDescription("Returns pre-seeded catalog of commercial bank loans and consumer finance products for comparison.");
 
 // 7. Export Comprehensive PDF Report
-loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, ILoanAdvisorService service, IPdfReportService pdfService) =>
+loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IPdfReportService pdfService) =>
 {
-    var errors = LoanRequestValidator.Validate(request);
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
-    var report = service.GenerateFullReport(request!);
-    var pdfBytes = pdfService.GenerateReportPdf(report, request?.CustomerName);
+    var report = service.GenerateFullReport(request!, lang);
+    var pdfBytes = pdfService.GenerateReportPdf(report, request?.CustomerName, lang);
     var fileName = $"LoanLens-Report-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
     return Results.File(pdfBytes, "application/pdf", fileName);
 })
@@ -193,19 +204,20 @@ loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, ILoanAdvisorSe
 .WithDescription("Generates and downloads a branded PDF report with risk score, stress testing, and product comparison.");
 
 // 8. Save Evaluated Scenario
-loanGroup.MapPost("/save-scenario", async (LoanAnalysisRequestDto request, ILoanAdvisorService service, IScenarioRepository repo, CancellationToken ct) =>
+loanGroup.MapPost("/save-scenario", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IScenarioRepository repo, CancellationToken ct) =>
 {
-    var errors = LoanRequestValidator.Validate(request);
+    var lang = ResolveLanguage(context, request?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
     if (errors.Count > 0)
-        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
-    var report = service.GenerateFullReport(request!);
+    var report = service.GenerateFullReport(request!, lang);
     var id = await repo.SaveScenarioAsync(request?.CustomerName, report, ct);
     return Results.Created($"/api/loans/scenarios/{id}", new
     {
         id,
         customerName = request?.CustomerName,
-        message = "تم حفظ السيناريو بنجاح في قاعدة البيانات",
+        message = LoanLensLanguage.IsArabic(lang) ? "تم حفظ السيناريو بنجاح في قاعدة البيانات" : "Scenario saved successfully to database",
         report
     });
 })
@@ -225,12 +237,13 @@ loanGroup.MapGet("/scenarios", async (IScenarioRepository repo, int count = 20, 
 .WithDescription("Retrieves recent evaluated scenario summaries ordered by creation date descending.");
 
 // 10. Get Saved Scenario by ID
-loanGroup.MapGet("/scenarios/{id:guid}", async (Guid id, IScenarioRepository repo, CancellationToken ct) =>
+loanGroup.MapGet("/scenarios/{id:guid}", async (Guid id, HttpContext context, IScenarioRepository repo, CancellationToken ct) =>
 {
+    var lang = ResolveLanguage(context);
     var report = await repo.GetScenarioByIdAsync(id, ct);
     if (report is null)
     {
-        return Results.NotFound(new { message = $"لم يتم العثور على السيناريو بالمعرف {id}" });
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
     }
     return Results.Ok(report);
 })
@@ -239,15 +252,16 @@ loanGroup.MapGet("/scenarios/{id:guid}", async (Guid id, IScenarioRepository rep
 .WithDescription("Loads complete saved loan analysis report from database by unique ID.");
 
 // 11. Download Saved Scenario PDF by ID
-loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, IScenarioRepository repo, IPdfReportService pdfService, CancellationToken ct) =>
+loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, HttpContext context, IScenarioRepository repo, IPdfReportService pdfService, CancellationToken ct) =>
 {
+    var lang = ResolveLanguage(context);
     var report = await repo.GetScenarioByIdAsync(id, ct);
     if (report is null)
     {
-        return Results.NotFound(new { message = $"لم يتم العثور على السيناريو بالمعرف {id}" });
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
     }
 
-    var pdfBytes = pdfService.GenerateReportPdf(report);
+    var pdfBytes = pdfService.GenerateReportPdf(report, null, lang);
     var fileName = $"LoanLens-Scenario-{id}.pdf";
     return Results.File(pdfBytes, "application/pdf", fileName);
 })
@@ -263,6 +277,22 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Language resolution helper: supports explicit param, ?lang= query string, Accept-Language header, default English
+static string ResolveLanguage(HttpContext context, string? explicitLang = null)
+{
+    if (!string.IsNullOrWhiteSpace(explicitLang))
+        return LoanLensLanguage.IsArabic(explicitLang) ? LoanLensLanguage.Arabic : LoanLensLanguage.English;
+
+    if (context.Request.Query.TryGetValue("lang", out var queryLang) && !string.IsNullOrWhiteSpace(queryLang))
+        return LoanLensLanguage.IsArabic(queryLang.ToString()) ? LoanLensLanguage.Arabic : LoanLensLanguage.English;
+
+    var acceptLang = context.Request.Headers.AcceptLanguage.ToString();
+    if (!string.IsNullOrWhiteSpace(acceptLang) && LoanLensLanguage.IsArabic(acceptLang))
+        return LoanLensLanguage.Arabic;
+
+    return LoanLensLanguage.English;
+}
 
 // DTO helpers for API bindings
 public record AffordabilityRequestDto(UserProfileDto Profile, LoanInputDto Loan);

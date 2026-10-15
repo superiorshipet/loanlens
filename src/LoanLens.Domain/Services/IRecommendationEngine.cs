@@ -9,7 +9,8 @@ public interface IRecommendationEngine
         LoanParameters loan, 
         AmortizationSchedule schedule, 
         AffordabilityMetrics affordability, 
-        RiskEvaluation riskEvaluation);
+        RiskEvaluation riskEvaluation,
+        string language = "en");
 
-    IReadOnlyList<LoanProduct> GetCatalog();
+    IReadOnlyList<LoanProduct> GetCatalog(string language = "en");
 }

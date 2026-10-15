@@ -8,5 +8,6 @@ public interface IRiskScoringEngine
         FinancialProfile profile, 
         AffordabilityMetrics affordability, 
         StressTestSummary stressTest, 
-        MonteCarloSimulationResult monteCarlo);
+        MonteCarloSimulationResult monteCarlo,
+        string language = "en");
 }
