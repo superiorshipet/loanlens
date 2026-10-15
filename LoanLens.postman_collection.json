@@ -1,0 +1,140 @@
+{
+  "info": {
+    "_postman_id": "b3e0c7a5-489e-4e32-9f33-128479e0f111",
+    "name": "LoanLens API - Egyptian Loan Financial Advisor",
+    "description": "Postman Collection for LoanLens Financial Advisory Engine.\n- OpenAPI Spec URL: http://localhost:5257/openapi/v1.json\n- Scalar Interactive UI: http://localhost:5257/scalar/v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5257",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Full 360 Advisor Analysis (All Engines)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/full-analysis",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "full-analysis"]
+        },
+        "description": "Executes full pipeline: Amortization Schedule, Affordability (DTI), 7 Stress Shocks, 5000-path Monte Carlo, 0-100 Risk Score, Strategy Options, and Market Catalog Comparison."
+      }
+    },
+    {
+      "name": "2. Calculate Amortization Schedule & APR",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"principal\": 100000,\n  \"tenorMonths\": 24,\n  \"annualInterestRatePercentage\": 12.0,\n  \"calculationMethod\": 2,\n  \"rateType\": 1,\n  \"adminFeePercentage\": 2.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/calculate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "calculate"]
+        },
+        "description": "Calculates monthly installment and schedule. Converts Flat rate (12%) to Effective APR (e.g. ~21.5%)."
+      }
+    },
+    {
+      "name": "3. Analyze Affordability (DTI & Runway)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 15000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 6000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 20000,\n    \"dependentsCount\": 2,\n    \"age\": 35,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 80000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/affordability",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "affordability"]
+        },
+        "description": "Evaluates DTI ratio against CBE 50% threshold, disposable cash flow, and emergency runway months."
+      }
+    },
+    {
+      "name": "4. Run Stress Testing Shocks",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 20000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 8000,\n    \"currentMonthlyInstallments\": 1000,\n    \"savings\": 30000,\n    \"dependentsCount\": 1,\n    \"age\": 28,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 120000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 2,\n    \"adminFeePercentage\": 2.0\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/stress-test",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "stress-test"]
+        },
+        "description": "Simulates 7 deterministic crisis scenarios: Medical emergency, 1/3/6 months job interruption, 25% income loss, inflation/rate hike, and combined crisis."
+      }
+    },
+    {
+      "name": "5. Run Monte Carlo Simulation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 22000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 40000,\n    \"dependentsCount\": 1,\n    \"age\": 31,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 1000\n  },\n  \"loan\": {\n    \"principal\": 90000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"iterations\": 5000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/monte-carlo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "monte-carlo"]
+        },
+        "description": "Runs 5,000 stochastic life simulations with Gaussian income volatility and Poisson emergency events."
+      }
+    },
+    {
+      "name": "6. Get Egyptian Loan Products Catalog",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/catalog",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "catalog"]
+        },
+        "description": "Retrieves pre-seeded catalog of commercial bank loans and consumer finance products."
+      }
+    }
+  ]
+}
