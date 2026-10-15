@@ -39,44 +39,73 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         ArgumentNullException.ThrowIfNull(report);
 
         var isAr = LoanLensLanguage.IsArabic(language);
-        var apiKey = ResolveApiKey();
+        var geminiKey = ResolveGeminiKey();
+        var groqKey = ResolveGroqKey();
 
-        if (string.IsNullOrWhiteSpace(apiKey))
+        // 1. Try Primary Provider (Default: Gemini)
+        if (!string.IsNullOrWhiteSpace(geminiKey))
         {
-            _logger.LogInformation("No AI API Key configured. Generating high-precision rule-based narrative advice.");
-            return GenerateRuleBasedAdvice(report, customerName, customQuestion, isAr);
-        }
-
-        try
-        {
-            var advice = await CallLlmApiAsync(report, apiKey, customerName, customQuestion, isAr, cancellationToken);
-            if (advice != null)
+            try
             {
-                return advice;
+                var advice = await CallGeminiAsync(report, geminiKey, customerName, customQuestion, isAr, cancellationToken);
+                if (advice != null)
+                {
+                    _logger.LogInformation("Successfully generated narrative advice using Gemini ({Model}).", advice.ModelUsed);
+                    return advice;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Gemini API call failed. Attempting secondary fallback provider.");
             }
         }
-        catch (Exception ex)
+
+        // 2. Try Secondary Provider (Groq)
+        if (!string.IsNullOrWhiteSpace(groqKey))
         {
-            _logger.LogWarning(ex, "Failed to generate AI advice via external LLM provider ({Provider}). Falling back to rule-based engine.", _options.Provider);
+            try
+            {
+                var advice = await CallGroqAsync(report, groqKey, customerName, customQuestion, isAr, cancellationToken);
+                if (advice != null)
+                {
+                    _logger.LogInformation("Successfully generated narrative advice using Groq ({Model}).", advice.ModelUsed);
+                    return advice;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Groq API call failed. Falling back to deterministic rule-based engine.");
+            }
         }
 
+        // 3. Fallback to high-precision deterministic rule-based engine
+        _logger.LogInformation("Generating narrative advice via high-precision rule-based engine.");
         return GenerateRuleBasedAdvice(report, customerName, customQuestion, isAr);
     }
 
-    private string? ResolveApiKey()
+    private string? ResolveGeminiKey()
     {
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            return _options.ApiKey.Trim();
+        if (!string.IsNullOrWhiteSpace(_options.GeminiApiKey))
+            return _options.GeminiApiKey.Trim();
 
-        var envKey = Environment.GetEnvironmentVariable("LOANLENS_AI_API_KEY")
-                  ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-                  ?? Environment.GetEnvironmentVariable("GROQ_API_KEY")
-                  ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        var env = Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+               ?? Environment.GetEnvironmentVariable("LOANLENS_GEMINI_KEY");
 
-        return string.IsNullOrWhiteSpace(envKey) ? null : envKey.Trim();
+        return string.IsNullOrWhiteSpace(env) ? null : env.Trim();
     }
 
-    private async Task<LoanNarrativeAdvice?> CallLlmApiAsync(
+    private string? ResolveGroqKey()
+    {
+        if (!string.IsNullOrWhiteSpace(_options.GroqApiKey))
+            return _options.GroqApiKey.Trim();
+
+        var env = Environment.GetEnvironmentVariable("GROQ_API_KEY")
+               ?? Environment.GetEnvironmentVariable("LOANLENS_GROQ_KEY");
+
+        return string.IsNullOrWhiteSpace(env) ? null : env.Trim();
+    }
+
+    private async Task<LoanNarrativeAdvice?> CallGeminiAsync(
         ComprehensiveLoanReportDto report,
         string apiKey,
         string? customerName,
@@ -84,14 +113,82 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         bool isAr,
         CancellationToken ct)
     {
-        var baseUrl = _options.BaseUrl?.TrimEnd('/') ?? "https://generativelanguage.googleapis.com/v1beta/openai";
-        var endpoint = $"{baseUrl}/chat/completions";
+        var model = string.IsNullOrWhiteSpace(_options.GeminiModelId) ? "gemini-3.5-flash" : _options.GeminiModelId;
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
         var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr);
 
-        var requestBody = new
+        var payload = new
         {
-            model = _options.ModelId,
+            contents = new object[]
+            {
+                new
+                {
+                    parts = new object[]
+                    {
+                        new { text = $"{systemPrompt}\n\n{userPrompt}" }
+                    }
+                }
+            },
+            generationConfig = new
+            {
+                responseMimeType = "application/json",
+                temperature = _options.Temperature
+            }
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
+
+        var response = await _httpClient.SendAsync(request, timeoutCts.Token);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+            _logger.LogWarning("Gemini returned HTTP {StatusCode}: {Error}", response.StatusCode, err);
+            return null;
+        }
+
+        var json = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        if (root.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+        {
+            var firstCandidate = candidates[0];
+            if (firstCandidate.TryGetProperty("content", out var cElem) &&
+                cElem.TryGetProperty("parts", out var parts) &&
+                parts.GetArrayLength() > 0)
+            {
+                var text = parts[0].GetProperty("text").GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return ParseAdvisorJson(text, $"Gemini:{model}", isAr);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<LoanNarrativeAdvice?> CallGroqAsync(
+        ComprehensiveLoanReportDto report,
+        string apiKey,
+        string? customerName,
+        string? customQuestion,
+        bool isAr,
+        CancellationToken ct)
+    {
+        var model = string.IsNullOrWhiteSpace(_options.GroqModelId) ? "openai/gpt-oss-120b" : _options.GroqModelId;
+        var url = "https://api.groq.com/openai/v1/chat/completions";
+
+        var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr);
+
+        var payload = new
+        {
+            model = model,
             messages = new object[]
             {
                 new { role = "system", content = systemPrompt },
@@ -101,28 +198,36 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
             temperature = _options.Temperature
         };
 
-        var jsonContent = new StringContent(
-            JsonSerializer.Serialize(requestBody),
-            Encoding.UTF8,
-            "application/json");
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        request.Content = jsonContent;
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(10, _options.TimeoutSeconds)));
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
 
         var response = await _httpClient.SendAsync(request, timeoutCts.Token);
         if (!response.IsSuccessStatusCode)
         {
-            var errBody = await response.Content.ReadAsStringAsync(timeoutCts.Token);
-            _logger.LogWarning("LLM Provider returned error HTTP {StatusCode}: {ErrorBody}", response.StatusCode, errBody);
+            var err = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+            _logger.LogWarning("Groq returned HTTP {StatusCode}: {Error}", response.StatusCode, err);
             return null;
         }
 
-        var responseJson = await response.Content.ReadAsStringAsync(timeoutCts.Token);
-        return ParseLlmResponse(responseJson, isAr);
+        var json = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+        {
+            var msg = choices[0].GetProperty("message");
+            var text = msg.GetProperty("content").GetString();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return ParseAdvisorJson(text, $"Groq:{model}", isAr);
+            }
+        }
+
+        return null;
     }
 
     private (string SystemPrompt, string UserPrompt) BuildPrompts(
@@ -245,48 +350,45 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         return (systemPrompt, sb.ToString());
     }
 
-    private LoanNarrativeAdvice? ParseLlmResponse(string responseJson, bool isAr)
+    private LoanNarrativeAdvice? ParseAdvisorJson(string content, string modelUsed, bool isAr)
     {
         try
         {
-            using var doc = JsonDocument.Parse(responseJson);
-            var root = doc.RootElement;
-
-            if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            var cleanJson = content.Trim();
+            if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
             {
-                var message = choices[0].GetProperty("message");
-                var content = message.GetProperty("content").GetString();
+                cleanJson = cleanJson[7..];
+            }
+            else if (cleanJson.StartsWith("```"))
+            {
+                cleanJson = cleanJson[3..];
+            }
 
-                if (!string.IsNullOrWhiteSpace(content))
+            if (cleanJson.EndsWith("```"))
+            {
+                cleanJson = cleanJson[..^3];
+            }
+
+            cleanJson = cleanJson.Trim();
+
+            try
+            {
+                using var doc = JsonDocument.Parse(cleanJson);
+                var root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
                 {
-                    // Clean possible markdown code fence ```json ... ```
-                    var cleanJson = content.Trim();
-                    if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        cleanJson = cleanJson[7..];
-                    }
-                    else if (cleanJson.StartsWith("```"))
-                    {
-                        cleanJson = cleanJson[3..];
-                    }
+                    root = root[0];
+                }
 
-                    if (cleanJson.EndsWith("```"))
-                    {
-                        cleanJson = cleanJson[..^3];
-                    }
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    var summary = root.TryGetProperty("executiveSummary", out var s) ? s.GetString() ?? "" : "";
+                    var insight = root.TryGetProperty("egyptianMarketInsight", out var emi) ? emi.GetString() ?? "" : "";
+                    var disclaimer = root.TryGetProperty("disclaimer", out var d) ? d.GetString() ?? "" : "";
 
-                    cleanJson = cleanJson.Trim();
-
-                    using var parsedDoc = JsonDocument.Parse(cleanJson);
-                    var pRoot = parsedDoc.RootElement;
-
-                    var summary = pRoot.TryGetProperty("executiveSummary", out var s) ? s.GetString() ?? "" : "";
-                    var insight = pRoot.TryGetProperty("egyptianMarketInsight", out var emi) ? emi.GetString() ?? "" : "";
-                    var disclaimer = pRoot.TryGetProperty("disclaimer", out var d) ? d.GetString() ?? "" : "";
-
-                    var strengths = ReadStringArray(pRoot, "keyStrengths");
-                    var warnings = ReadStringArray(pRoot, "vulnerabilitiesAndWarnings");
-                    var actions = ReadStringArray(pRoot, "actionPlanSteps");
+                    var strengths = ReadStringArray(root, "keyStrengths");
+                    var warnings = ReadStringArray(root, "vulnerabilitiesAndWarnings");
+                    var actions = ReadStringArray(root, "actionPlanSteps");
 
                     if (!string.IsNullOrWhiteSpace(summary))
                     {
@@ -297,19 +399,73 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
                             ActionPlanSteps: actions,
                             EgyptianMarketInsight: insight,
                             Disclaimer: disclaimer,
-                            ModelUsed: $"{_options.Provider}:{_options.ModelId}",
+                            ModelUsed: modelUsed,
                             GeneratedAtUtc: DateTime.UtcNow
                         );
                     }
                 }
             }
+            catch
+            {
+                // Resilient regex fallback below
+            }
+
+            return ExtractAdviceWithRegex(cleanJson, modelUsed, isAr);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to parse LLM JSON completion.");
+            _logger.LogWarning(ex, "Failed to parse LLM JSON completion: {RawContent}", content);
         }
 
         return null;
+    }
+
+    private static LoanNarrativeAdvice? ExtractAdviceWithRegex(string text, string modelUsed, bool isAr)
+    {
+        var summaryMatch = System.Text.RegularExpressions.Regex.Match(text, "\"executiveSummary\"\\s*:\\s*\"([^\"]+)\"");
+        var summary = summaryMatch.Success ? summaryMatch.Groups[1].Value : "";
+
+        if (string.IsNullOrWhiteSpace(summary))
+            return null;
+
+        var insightMatch = System.Text.RegularExpressions.Regex.Match(text, "\"egyptianMarketInsight\"\\s*:\\s*\"([^\"]+)\"");
+        var insight = insightMatch.Success ? insightMatch.Groups[1].Value : "";
+
+        var disclaimerMatch = System.Text.RegularExpressions.Regex.Match(text, "\"disclaimer\"\\s*:\\s*\"([^\"]+)\"");
+        var disclaimer = disclaimerMatch.Success ? disclaimerMatch.Groups[1].Value : "";
+
+        var strengths = ExtractArrayWithRegex(text, "keyStrengths");
+        var warnings = ExtractArrayWithRegex(text, "vulnerabilitiesAndWarnings");
+        var actions = ExtractArrayWithRegex(text, "actionPlanSteps");
+
+        return new LoanNarrativeAdvice(
+            ExecutiveSummary: summary.Replace("\\n", "\n").Replace("\\\"", "\""),
+            KeyStrengths: strengths,
+            VulnerabilitiesAndWarnings: warnings,
+            ActionPlanSteps: actions,
+            EgyptianMarketInsight: insight.Replace("\\n", "\n").Replace("\\\"", "\""),
+            Disclaimer: disclaimer.Replace("\\n", "\n").Replace("\\\"", "\""),
+            ModelUsed: modelUsed,
+            GeneratedAtUtc: DateTime.UtcNow
+        );
+    }
+
+    private static List<string> ExtractArrayWithRegex(string text, string propertyName)
+    {
+        var list = new List<string>();
+        var match = System.Text.RegularExpressions.Regex.Match(text, $"\"{propertyName}\"\\s*:\\s*\\[([^\\]]*)\\]");
+        if (match.Success)
+        {
+            var rawItems = match.Groups[1].Value;
+            var itemMatches = System.Text.RegularExpressions.Regex.Matches(rawItems, "\"([^\"]+)\"");
+            foreach (System.Text.RegularExpressions.Match im in itemMatches)
+            {
+                var val = im.Groups[1].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(val))
+                    list.Add(val.Replace("\\n", " ").Replace("\\\"", "\""));
+            }
+        }
+        return list;
     }
 
     private static List<string> ReadStringArray(JsonElement root, string propertyName)
@@ -331,7 +487,7 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
 
     /// <summary>
     /// Intelligent, multi-tier deterministic rule-based narrative synthesizer.
-    /// Operates with 100% reliability even if no external LLM API key is configured.
+    /// Operates with 100% reliability even if external LLM APIs are unreachable.
     /// </summary>
     public LoanNarrativeAdvice GenerateRuleBasedAdvice(
         ComprehensiveLoanReportDto report,

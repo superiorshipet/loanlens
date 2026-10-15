@@ -5,28 +5,32 @@ public class AiAdvisorOptions
     public const string SectionName = "AiAdvisor";
 
     /// <summary>
-    /// LLM Provider: "Gemini" (Default, free at Google AI Studio), "Groq" (Free at console.groq.com), "OpenAI", or "Local".
+    /// Preferred primary provider: "Gemini" or "Groq".
     /// </summary>
     public string Provider { get; set; } = "Gemini";
 
     /// <summary>
-    /// API Key for the chosen provider. Can also be set via environment variable LOANLENS_AI_API_KEY or GEMINI_API_KEY.
-    /// If null or empty, the advisor automatically uses the built-in intelligent rule-based narrative engine.
+    /// Google Gemini API key.
     /// </summary>
-    public string? ApiKey { get; set; }
+    public string? GeminiApiKey { get; set; }
 
     /// <summary>
-    /// Model identifier, e.g. "gemini-1.5-flash", "gemini-2.0-flash", or "llama-3.3-70b-versatile".
+    /// Google Gemini Model (e.g. "gemini-3.5-flash").
     /// </summary>
-    public string ModelId { get; set; } = "gemini-1.5-flash";
+    public string GeminiModelId { get; set; } = "gemini-3.5-flash";
 
     /// <summary>
-    /// Base URL for the OpenAI-compatible API endpoint.
+    /// Groq API key (starts with "gsk_").
     /// </summary>
-    public string? BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta/openai/";
+    public string? GroqApiKey { get; set; }
 
     /// <summary>
-    /// Temperature for LLM output (0.2 - 0.4 recommended for factual financial advice).
+    /// Groq Model (e.g. "openai/gpt-oss-120b" or "allam-2-7b").
+    /// </summary>
+    public string GroqModelId { get; set; } = "openai/gpt-oss-120b";
+
+    /// <summary>
+    /// Temperature for LLM inference (0.2 - 0.4 recommended for factual consistency).
     /// </summary>
     public double Temperature { get; set; } = 0.3;
 
