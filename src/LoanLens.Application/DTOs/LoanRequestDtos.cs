@@ -48,4 +48,5 @@ public record LoanInputDto(
 public record LoanAnalysisRequestDto(
     UserProfileDto Profile,
     LoanInputDto Loan,
-    int MonteCarloIterations = 5000);
+    int MonteCarloIterations = 5000,
+    string? CustomerName = null);

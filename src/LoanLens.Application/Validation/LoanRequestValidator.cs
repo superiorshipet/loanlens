@@ -88,6 +88,30 @@ public static class LoanRequestValidator
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }
 
+    public static Dictionary<string, string[]> Validate(LoanAnalysisRequestDto? request)
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        if (request is null)
+        {
+            errors["request"] = ["بيانات الطلب مطلوبة."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        var baseErrors = Validate(request.Profile, request.Loan);
+        foreach (var (key, msgs) in baseErrors)
+        {
+            errors[key] = msgs.ToList();
+        }
+
+        if (request.MonteCarloIterations <= 0 || request.MonteCarloIterations > 50000)
+        {
+            AddError(errors, "monteCarloIterations", "عدد محاكاة مونت كارلو يجب أن يكون بين 100 و 50,000 محاكاة.");
+        }
+
+        return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+    }
+
     private static void AddError(Dictionary<string, List<string>> dict, string key, string message)
     {
         if (!dict.TryGetValue(key, out var list))

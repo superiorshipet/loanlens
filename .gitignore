@@ -14,3 +14,8 @@
 .dist/
 .DS_Store
 Thumbs.db
+
+## SQLite Databases
+*.db
+*.db-shm
+*.db-wal

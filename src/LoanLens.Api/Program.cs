@@ -1,13 +1,17 @@
 using LoanLens.Application;
 using LoanLens.Application.DTOs;
+using LoanLens.Application.Interfaces;
 using LoanLens.Application.Services;
 using LoanLens.Application.Validation;
+using LoanLens.Infrastructure;
+using LoanLens.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register Clean Architecture Application & Domain Services
+// Register Clean Architecture Application & Infrastructure Services
 builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Enable CORS for local testing, frontend, and Postman
 builder.Services.AddCors(options =>
@@ -151,7 +155,7 @@ loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, ILoanAdvisorSer
 // 5. Generate 360° Comprehensive Advisor Report
 loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, ILoanAdvisorService service) =>
 {
-    var errors = LoanRequestValidator.Validate(request?.Profile, request?.Loan);
+    var errors = LoanRequestValidator.Validate(request);
     if (errors.Count > 0)
         return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
 
@@ -171,6 +175,92 @@ loanGroup.MapGet("/catalog", (ILoanAdvisorService service) =>
 .WithName("GetLoanCatalog")
 .WithSummary("Get Egyptian Market Loan Catalog")
 .WithDescription("Returns pre-seeded catalog of commercial bank loans and consumer finance products for comparison.");
+
+// 7. Export Comprehensive PDF Report
+loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, ILoanAdvisorService service, IPdfReportService pdfService) =>
+{
+    var errors = LoanRequestValidator.Validate(request);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var report = service.GenerateFullReport(request!);
+    var pdfBytes = pdfService.GenerateReportPdf(report, request?.CustomerName);
+    var fileName = $"LoanLens-Report-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+    return Results.File(pdfBytes, "application/pdf", fileName);
+})
+.WithName("ExportPdfReport")
+.WithSummary("Export Comprehensive Financial Report as PDF")
+.WithDescription("Generates and downloads a branded PDF report with risk score, stress testing, and product comparison.");
+
+// 8. Save Evaluated Scenario
+loanGroup.MapPost("/save-scenario", async (LoanAnalysisRequestDto request, ILoanAdvisorService service, IScenarioRepository repo, CancellationToken ct) =>
+{
+    var errors = LoanRequestValidator.Validate(request);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: "بيانات الإدخال غير صالحة");
+
+    var report = service.GenerateFullReport(request!);
+    var id = await repo.SaveScenarioAsync(request?.CustomerName, report, ct);
+    return Results.Created($"/api/loans/scenarios/{id}", new
+    {
+        id,
+        customerName = request?.CustomerName,
+        message = "تم حفظ السيناريو بنجاح في قاعدة البيانات",
+        report
+    });
+})
+.WithName("SaveScenario")
+.WithSummary("Save Evaluated Scenario to Database")
+.WithDescription("Persists full analysis report and parameters into SQLite database for historical tracking and reload.");
+
+// 9. Get Recent Saved Scenarios
+loanGroup.MapGet("/scenarios", async (IScenarioRepository repo, int count = 20, CancellationToken ct = default) =>
+{
+    var limit = Math.Clamp(count, 1, 100);
+    var list = await repo.GetRecentScenariosAsync(limit, ct);
+    return Results.Ok(list);
+})
+.WithName("GetRecentScenarios")
+.WithSummary("List Saved Scenarios")
+.WithDescription("Retrieves recent evaluated scenario summaries ordered by creation date descending.");
+
+// 10. Get Saved Scenario by ID
+loanGroup.MapGet("/scenarios/{id:guid}", async (Guid id, IScenarioRepository repo, CancellationToken ct) =>
+{
+    var report = await repo.GetScenarioByIdAsync(id, ct);
+    if (report is null)
+    {
+        return Results.NotFound(new { message = $"لم يتم العثور على السيناريو بالمعرف {id}" });
+    }
+    return Results.Ok(report);
+})
+.WithName("GetScenarioById")
+.WithSummary("Get Saved Scenario by ID")
+.WithDescription("Loads complete saved loan analysis report from database by unique ID.");
+
+// 11. Download Saved Scenario PDF by ID
+loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, IScenarioRepository repo, IPdfReportService pdfService, CancellationToken ct) =>
+{
+    var report = await repo.GetScenarioByIdAsync(id, ct);
+    if (report is null)
+    {
+        return Results.NotFound(new { message = $"لم يتم العثور على السيناريو بالمعرف {id}" });
+    }
+
+    var pdfBytes = pdfService.GenerateReportPdf(report);
+    var fileName = $"LoanLens-Scenario-{id}.pdf";
+    return Results.File(pdfBytes, "application/pdf", fileName);
+})
+.WithName("DownloadScenarioPdf")
+.WithSummary("Download Saved Scenario PDF")
+.WithDescription("Generates and downloads PDF report directly from a previously saved scenario ID.");
+
+// Initialize SQLite database schema
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<LoanLensDbContext>();
+    db.Database.EnsureCreated();
+}
 
 app.Run();
 

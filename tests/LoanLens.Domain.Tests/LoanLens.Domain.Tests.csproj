@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LoanLens.Domain\LoanLens.Domain.csproj" />
     <ProjectReference Include="..\..\src\LoanLens.Application\LoanLens.Application.csproj" />
+    <ProjectReference Include="..\..\src\LoanLens.Infrastructure\LoanLens.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -10,6 +10,11 @@
       "key": "baseUrl",
       "value": "http://localhost:5257",
       "type": "string"
+    },
+    {
+      "key": "scenarioId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -25,7 +30,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+          "raw": "{\n  \"customerName\": \"أحمد محمود\",\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/full-analysis",
@@ -124,7 +129,110 @@
       }
     },
     {
-      "name": "6. Get Egyptian Loan Products Catalog",
+      "name": "6. Export Comprehensive PDF Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"كريم عادل\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  },\n  \"monteCarloIterations\": 5000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/export-pdf",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "export-pdf"]
+        },
+        "description": "Generates and streams a professional Arabic PDF financial report with verdict, risk score, stress test matrix, and market alternatives."
+      }
+    },
+    {
+      "name": "7. Save Scenario to SQLite Database",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.id) {",
+              "    pm.collectionVariables.set('scenarioId', jsonData.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"مروان طارق\",\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 14000,\n    \"currentMonthlyInstallments\": 3000,\n    \"savings\": 80000,\n    \"dependentsCount\": 1,\n    \"age\": 36,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 5000\n  },\n  \"loan\": {\n    \"principal\": 200000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.0\n  },\n  \"monteCarloIterations\": 5000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/save-scenario",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "save-scenario"]
+        },
+        "description": "Saves analysis scenario into SQLite database and sets the scenarioId collection variable for subsequent queries."
+      }
+    },
+    {
+      "name": "8. Get Recent Saved Scenarios",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/scenarios?count=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "scenarios"],
+          "query": [
+            {
+              "key": "count",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Lists recently saved loan scenarios with key indicators (Risk Score, DTI, Installment, Verdict)."
+      }
+    },
+    {
+      "name": "9. Get Saved Scenario by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "scenarios", "{{scenarioId}}"]
+        },
+        "description": "Retrieves full saved analysis report JSON by GUID ID."
+      }
+    },
+    {
+      "name": "10. Download Saved Scenario PDF by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/pdf",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "scenarios", "{{scenarioId}}", "pdf"]
+        },
+        "description": "Generates and downloads PDF report from the persisted scenario in SQLite."
+      }
+    },
+    {
+      "name": "11. Get Egyptian Loan Products Catalog",
       "request": {
         "method": "GET",
         "header": [],
