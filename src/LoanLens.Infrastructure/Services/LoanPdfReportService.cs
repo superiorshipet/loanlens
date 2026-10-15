@@ -126,6 +126,12 @@ public class LoanPdfReportService : IPdfReportService
 
             // 7. Actionable Advice
             column.Item().Element(c => ComposeAdviceSection(c, report, isAr));
+
+            // 8. AI Narrative Advisor Briefing (if available)
+            if (report.AiNarrative != null)
+            {
+                column.Item().Element(c => ComposeAiNarrativeSection(c, report.AiNarrative, isAr));
+            }
         });
     }
 
@@ -370,6 +376,61 @@ public class LoanPdfReportService : IPdfReportService
             foreach (var advice in report.Recommendation.KeyActionableAdvice)
             {
                 col.Item().PaddingTop(2).Text($"• {advice}").FontSize(8.5f);
+            }
+        });
+    }
+
+    private static void ComposeAiNarrativeSection(IContainer container, LoanNarrativeAdvice ai, bool isAr)
+    {
+        container.Border(1).BorderColor(Colors.Blue.Lighten3).Background(Colors.Blue.Lighten5).Padding(10).Column(col =>
+        {
+            col.Item().Row(r =>
+            {
+                r.RelativeItem().Text(isAr ? "موجز المستشار المالي الذكي (AI Financial Advisor)" : "AI Financial Advisor Briefing")
+                    .FontSize(11).Bold().FontColor(Colors.Blue.Darken4);
+                r.RelativeItem().AlignRight().Text($"[{ai.ModelUsed}]")
+                    .FontSize(7.5f).FontColor(Colors.Blue.Darken2);
+            });
+
+            if (!string.IsNullOrWhiteSpace(ai.ExecutiveSummary))
+            {
+                col.Item().PaddingTop(4).Text(ai.ExecutiveSummary).FontSize(8.5f).LineHeight(1.25f);
+            }
+
+            if (ai.KeyStrengths.Count > 0)
+            {
+                col.Item().PaddingTop(4).Text(isAr ? "أبرز عوامل الأمان المالي:" : "Key Financial Strengths:").Bold().FontSize(8.5f).FontColor(Colors.Green.Darken3);
+                foreach (var s in ai.KeyStrengths)
+                {
+                    col.Item().PaddingTop(1).Text($"✔ {s}").FontSize(8f);
+                }
+            }
+
+            if (ai.VulnerabilitiesAndWarnings.Count > 0)
+            {
+                col.Item().PaddingTop(4).Text(isAr ? "المخاطر ونقاط الضعف الحرجة:" : "Vulnerabilities & Critical Warnings:").Bold().FontSize(8.5f).FontColor(Colors.Red.Darken3);
+                foreach (var w in ai.VulnerabilitiesAndWarnings)
+                {
+                    col.Item().PaddingTop(1).Text($"⚠ {w}").FontSize(8f);
+                }
+            }
+
+            if (ai.ActionPlanSteps.Count > 0)
+            {
+                col.Item().PaddingTop(4).Text(isAr ? "خطة العمل التنفيذية الموصى بها:" : "Recommended Action Plan:").Bold().FontSize(8.5f).FontColor(Colors.Blue.Darken3);
+                for (int i = 0; i < ai.ActionPlanSteps.Count; i++)
+                {
+                    col.Item().PaddingTop(1).Text($"{i + 1}. {ai.ActionPlanSteps[i]}").FontSize(8f);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(ai.EgyptianMarketInsight))
+            {
+                col.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Orange.Lighten2).Background(Colors.Orange.Lighten5).Padding(4).Column(mc =>
+                {
+                    mc.Item().Text(isAr ? "💡 رؤية خاصة بالسوق المصرفي المصري:" : "💡 Egyptian Market Nuance:").Bold().FontSize(8f).FontColor(Colors.Orange.Darken4);
+                    mc.Item().Text(ai.EgyptianMarketInsight).FontSize(8f);
+                });
             }
         });
     }

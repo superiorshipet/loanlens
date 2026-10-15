@@ -204,7 +204,7 @@ loanGroup.MapPost("/monte-carlo", (MonteCarloRequestDto request, HttpContext con
 .WithDescription("Simulates 5,000+ stochastic life paths, returning default probability %, peak risk month, and 5th/50th/95th percentile savings.");
 
 // 5. Generate 360° Comprehensive Advisor Report
-loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service) =>
+loanGroup.MapPost("/full-analysis", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
     var lang = ResolveLanguage(context, request?.Language);
     var errors = LoanRequestValidator.Validate(request, lang);
@@ -212,11 +212,16 @@ loanGroup.MapPost("/full-analysis", (LoanAnalysisRequestDto request, HttpContext
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
     var report = service.GenerateFullReport(request!, lang);
+    if (request!.IncludeAiNarrative)
+    {
+        var ai = await aiAdvisor.GenerateAdviceAsync(report, request.CustomerName, request.CustomQuestion, lang, ct);
+        report = report with { AiNarrative = ai };
+    }
     return Results.Ok(report);
 })
 .WithName("GenerateFullAnalysis")
 .WithSummary("Comprehensive 360° Loan Analysis Report")
-.WithDescription("Executes complete financial advisory pipeline: Amortization, Affordability, Stress Testing, Monte Carlo, 0-100 Risk Score, Strategy Options, Catalog Alternatives, and Final Decision.");
+.WithDescription("Executes complete financial advisory pipeline: Amortization, Affordability, Stress Testing, Monte Carlo, 0-100 Risk Score, Strategy Options, Catalog Alternatives, and Final Decision. Optionally includes AI narrative advice.");
 
 // 6. Get Loan Products Catalog
 loanGroup.MapGet("/catalog", (HttpContext context, ILoanAdvisorService service) =>
@@ -230,7 +235,7 @@ loanGroup.MapGet("/catalog", (HttpContext context, ILoanAdvisorService service) 
 .WithDescription("Returns pre-seeded catalog of commercial bank loans and consumer finance products for comparison.");
 
 // 7. Export Comprehensive PDF Report
-loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IPdfReportService pdfService) =>
+loanGroup.MapPost("/export-pdf", async (LoanAnalysisRequestDto request, HttpContext context, ILoanAdvisorService service, IPdfReportService pdfService, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
     var lang = ResolveLanguage(context, request?.Language);
     var errors = LoanRequestValidator.Validate(request, lang);
@@ -238,6 +243,11 @@ loanGroup.MapPost("/export-pdf", (LoanAnalysisRequestDto request, HttpContext co
         return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الإدخال غير صالحة" : "Invalid input parameters");
 
     var report = service.GenerateFullReport(request!, lang);
+    if (request!.IncludeAiNarrative)
+    {
+        var ai = await aiAdvisor.GenerateAdviceAsync(report, request.CustomerName, request.CustomQuestion, lang, ct);
+        report = report with { AiNarrative = ai };
+    }
     var pdfBytes = pdfService.GenerateReportPdf(report, request?.CustomerName, lang);
     var fileName = $"LoanLens-Report-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
     return Results.File(pdfBytes, "application/pdf", fileName);
@@ -295,7 +305,7 @@ loanGroup.MapGet("/scenarios/{id:guid}", async (Guid id, HttpContext context, IS
 .WithDescription("Loads complete saved loan analysis report from database by unique ID.");
 
 // 11. Download Saved Scenario PDF by ID
-loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, HttpContext context, IScenarioRepository repo, IPdfReportService pdfService, CancellationToken ct) =>
+loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, bool includeAi, HttpContext context, IScenarioRepository repo, IPdfReportService pdfService, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
 {
     var lang = ResolveLanguage(context);
     var report = await repo.GetScenarioByIdAsync(id, ct);
@@ -304,13 +314,19 @@ loanGroup.MapGet("/scenarios/{id:guid}/pdf", async (Guid id, HttpContext context
         return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
     }
 
+    if (includeAi && report.AiNarrative == null)
+    {
+        var ai = await aiAdvisor.GenerateAdviceAsync(report, null, null, lang, ct);
+        report = report with { AiNarrative = ai };
+    }
+
     var pdfBytes = pdfService.GenerateReportPdf(report, null, lang);
     var fileName = $"LoanLens-Scenario-{id}.pdf";
     return Results.File(pdfBytes, "application/pdf", fileName);
 })
 .WithName("DownloadScenarioPdf")
 .WithSummary("Download Saved Scenario PDF")
-.WithDescription("Generates and downloads PDF report directly from a previously saved scenario ID.");
+.WithDescription("Generates and downloads PDF report directly from a previously saved scenario ID. Optionally includes AI narrative briefing with ?includeAi=true.");
 
 // 12. Compare Two Loan Scenarios Side-by-Side (Arbitrary Request Payloads)
 loanGroup.MapPost("/compare", (ScenarioComparisonRequestDto request, HttpContext context, ILoanAdvisorService service) =>
@@ -426,6 +442,37 @@ loanGroup.MapGet("/scenarios/{id:guid}/excel", async (Guid id, HttpContext conte
 .WithName("DownloadScenarioExcel")
 .WithSummary("Download Saved Scenario Excel (.xlsx)")
 .WithDescription("Exports amortization schedule of a saved loan scenario directly to an Excel spreadsheet.");
+
+// 19. Generate Personalized AI Narrative Financial Advice
+loanGroup.MapPost("/ai-advice", async (AiAdviceRequestDto request, HttpContext context, ILoanAdvisorService service, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
+{
+    var lang = ResolveLanguage(context, request?.AnalysisRequest?.Language);
+    var errors = LoanRequestValidator.Validate(request, lang);
+    if (errors.Count > 0)
+        return Results.ValidationProblem(errors, title: LoanLensLanguage.IsArabic(lang) ? "بيانات الاستشارة غير صالحة" : "Invalid advice request parameters");
+
+    var report = service.GenerateFullReport(request!.AnalysisRequest, lang);
+    var advice = await aiAdvisor.GenerateAdviceAsync(report, request.AnalysisRequest.CustomerName, request.CustomQuestion, lang, ct);
+    return Results.Ok(advice);
+})
+.WithName("GenerateAiAdvice")
+.WithSummary("Generate AI Narrative Loan Advisor Briefing")
+.WithDescription("Synthesizes personalized human-level financial advisory narrative with key strengths, vulnerabilities, step-by-step action plan, and Egyptian market nuances.");
+
+// 20. Generate AI Narrative Advice for Saved Scenario
+loanGroup.MapGet("/scenarios/{id:guid}/ai-advice", async (Guid id, string? question, HttpContext context, IScenarioRepository repo, ILoanNarrativeAdvisor aiAdvisor, CancellationToken ct) =>
+{
+    var lang = ResolveLanguage(context);
+    var report = await repo.GetScenarioByIdAsync(id, ct);
+    if (report is null)
+        return Results.NotFound(new { message = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو بالمعرف {id}" : $"Scenario not found with ID {id}" });
+
+    var advice = await aiAdvisor.GenerateAdviceAsync(report, null, question, lang, ct);
+    return Results.Ok(advice);
+})
+.WithName("GetScenarioAiAdvice")
+.WithSummary("Get AI Narrative Advice for Saved Scenario")
+.WithDescription("Generates personalized AI narrative advice and answers questions for a previously saved loan scenario.");
 
 // Initialize SQLite database schema
 using (var scope = app.Services.CreateScope())

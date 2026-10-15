@@ -20,9 +20,13 @@ public static class DependencyInjection
             options.UseSqlite(connectionString);
         });
 
+        services.Configure<Configuration.AiAdvisorOptions>(
+            configuration.GetSection(Configuration.AiAdvisorOptions.SectionName));
+
         services.AddScoped<IScenarioRepository, ScenarioRepository>();
         services.AddScoped<IPdfReportService, LoanPdfReportService>();
         services.AddScoped<IExcelExportService, LoanExcelExportService>();
+        services.AddHttpClient<ILoanNarrativeAdvisor, LoanNarrativeAdvisorService>();
 
         return services;
     }

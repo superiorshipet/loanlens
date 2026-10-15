@@ -569,6 +569,62 @@
       }
     },
     {
+      "name": "19. Generate Personalized AI Narrative Advisor Briefing",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept-Language",
+            "value": "{{lang}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"analysisRequest\": {\n    \"customerName\": \"Tarek El-Sayed\",\n    \"language\": \"{{lang}}\",\n    \"profile\": {\n      \"monthlyIncome\": 35000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 12000,\n      \"currentMonthlyInstallments\": 2500,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 33,\n      \"hasHealthInsurance\": true,\n      \"secondaryIncome\": 2000\n    },\n    \"loan\": {\n      \"principal\": 150000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"rateType\": 1,\n      \"adminFeePercentage\": 1.5,\n      \"earlyRepaymentFeePercentage\": 3.0,\n      \"latePaymentPenaltyPercentage\": 2.0\n    },\n    \"monteCarloIterations\": 5000\n  },\n  \"customQuestion\": \"هل تنصحني بزيادة مدة السداد لـ 4 سنين لتقليل القسط الشهري، ولا الفايدة الزيادة مش مستاهلة؟\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/ai-advice?lang={{lang}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "ai-advice"],
+          "query": [
+            {
+              "key": "lang",
+              "value": "{{lang}}"
+            }
+          ]
+        },
+        "description": "Calls the AI Financial Advisor (Gemini/Groq/OpenAI with automatic high-precision rule-based fallback). Synthesizes an empathetic, plain-language narrative briefing in Arabic or English with key strengths, vulnerabilities, step-by-step action plan, and Egyptian banking nuances."
+      }
+    },
+    {
+      "name": "20. Get Saved Scenario AI Narrative Advice by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept-Language",
+            "value": "{{lang}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/ai-advice?lang={{lang}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "loans", "scenarios", "{{scenarioId}}", "ai-advice"],
+          "query": [
+            {
+              "key": "lang",
+              "value": "{{lang}}"
+            }
+          ]
+        },
+        "description": "Loads a saved scenario from SQLite and generates an on-demand AI narrative advisory briefing in Arabic or English."
+      }
+    },
+    {
       "name": "Realistic Egyptian Scenarios (Ready-to-Test)",
       "item": [
         {

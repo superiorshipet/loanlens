@@ -69,7 +69,9 @@ public record LoanAnalysisRequestDto(
     int MonteCarloIterations = 5000,
     string? CustomerName = null,
     string? Language = null,
-    MonteCarloOptionsDto? MonteCarloOptions = null);
+    MonteCarloOptionsDto? MonteCarloOptions = null,
+    bool IncludeAiNarrative = false,
+    string? CustomQuestion = null);
 
 public record ScenarioComparisonRequestDto(
     LoanAnalysisRequestDto ScenarioA,

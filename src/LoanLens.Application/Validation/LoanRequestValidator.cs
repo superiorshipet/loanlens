@@ -291,6 +291,20 @@ public static class LoanRequestValidator
         return Validate(request.Loan, effectiveLang);
     }
 
+    public static Dictionary<string, string[]> Validate(AiAdviceRequestDto? request, string language = "en")
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var isAr = LoanLensLanguage.IsArabic(language);
+
+        if (request is null || request.AnalysisRequest is null)
+        {
+            errors["analysisRequest"] = [isAr ? "بيانات التحليل المالي مطلوبة." : "Analysis request payload is required."];
+            return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
+        }
+
+        return Validate(request.AnalysisRequest, language);
+    }
+
     public static void ValidateMonteCarloOptions(MonteCarloOptionsDto options, Dictionary<string, List<string>> errors, bool isAr)
     {
         if (options.Iterations <= 0 || options.Iterations > 50000)
