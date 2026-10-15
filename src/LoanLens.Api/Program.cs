@@ -20,9 +20,31 @@ builder.Services.AddCors(options =>
 });
 
 // Configure OpenAPI specification
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Servers = [new() { Url = "http://localhost:5257" }];
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
+
+// URL path normalization: safely handle double slashes from Postman baseUrl concatenation (e.g. //api/...)
+app.Use((context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (path != null && path.Contains("//"))
+    {
+        while (path.Contains("//"))
+        {
+            path = path.Replace("//", "/");
+        }
+        context.Request.Path = path;
+    }
+    return next();
+});
 
 app.UseCors();
 
