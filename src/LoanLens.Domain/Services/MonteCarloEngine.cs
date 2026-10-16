@@ -43,7 +43,7 @@ public class MonteCarloEngine : IMonteCarloEngine
             : 0.08;
         double majorShockProbability = options?.CustomEmergencyProbability.HasValue == true
             ? Math.Clamp((double)options.CustomEmergencyProbability.Value * 0.3, 0.005, 0.25)
-            : 0.015;
+            : (profile.HasHealthInsurance ? 0.012 : (profile.DependentsCount > 0 ? 0.024 : 0.018));
 
         decimal customEmergencyCost = options?.CustomEmergencyCost ?? 0m;
 
@@ -90,11 +90,13 @@ public class MonteCarloEngine : IMonteCarloEngine
                         }
                         else if (profile.HasHealthInsurance)
                         {
-                            totalOutflow += (decimal)(rand.Next(5000, 15000));
+                            totalOutflow += (decimal)(rand.Next(4000, 12000));
                         }
                         else
                         {
-                            totalOutflow += (decimal)(rand.Next(15000, 45000));
+                            int minShock = profile.DependentsCount > 0 ? 20000 : 15000;
+                            int maxShock = profile.DependentsCount > 0 ? 55000 : 40000;
+                            totalOutflow += (decimal)(rand.Next(minShock, maxShock));
                         }
                     }
 

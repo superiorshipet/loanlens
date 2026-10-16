@@ -13,9 +13,13 @@ public class StressTestingEngine : IStressTestingEngine
 
         var isAr = LoanLensLanguage.IsArabic(language);
 
+        decimal emergencyCost = profile.HasHealthInsurance
+            ? (profile.DependentsCount >= 2 ? 10_000m : 7_500m)
+            : (profile.DependentsCount >= 2 ? 38_000m : 25_000m);
+
         var results = new List<StressScenarioResult>
         {
-            SimulateMedicalEmergency(profile, loan.TenorMonths, monthlyInstallment, 25_000m, isAr),
+            SimulateMedicalEmergency(profile, loan.TenorMonths, monthlyInstallment, emergencyCost, isAr),
             SimulateIncomeInterruption(profile, loan.TenorMonths, monthlyInstallment, disruptionMonths: 1, isAr),
             SimulateIncomeInterruption(profile, loan.TenorMonths, monthlyInstallment, disruptionMonths: 3, isAr),
             SimulateIncomeInterruption(profile, loan.TenorMonths, monthlyInstallment, disruptionMonths: 6, isAr),
@@ -86,16 +90,28 @@ public class StressTestingEngine : IStressTestingEngine
 
         bool survived = defaultMonth is null;
         string name = isAr
-            ? $"مصاريف علاج مفاجئة ({medicalCost:N0} ج.م)"
-            : $"Emergency Medical Expense ({medicalCost:N0} EGP)";
+            ? (profile.HasHealthInsurance
+                ? $"مصاريف علاج طارئة للمؤمن عليهم ({medicalCost:N0} ج.م - تحمل جزئي)"
+                : $"مصاريف علاج طارئة لغير المؤمن عليهم ({medicalCost:N0} ج.م - سداد كامل)")
+            : (profile.HasHealthInsurance
+                ? $"Emergency Medical Expense - Insured ({medicalCost:N0} EGP Co-Pay)"
+                : $"Emergency Medical Expense - Uninsured ({medicalCost:N0} EGP Full Cost)");
 
         string desc = survived
             ? (isAr 
-                ? $"نجاح: تحمل مصاريف علاجية طارئة بقيمة {medicalCost:N0} ج.م مع بقاء مدخرات {Math.Max(0, savings):N0} ج.م."
-                : $"Success: Absorbed unexpected medical expense of {medicalCost:N0} EGP with {Math.Max(0, savings):N0} EGP savings remaining.")
+                ? (profile.HasHealthInsurance
+                    ? $"نجاح: التغطية بالتأمين الصحي حمت المدخرات واقتصرت الصدمة على نسبة التحمل ({medicalCost:N0} ج.م)، مع بقاء رصيد {Math.Max(0, savings):N0} ج.م."
+                    : $"نجاح: تمكنت المدخرات الكبيرة من امتصاص التكلفة العلاجية الكاملة ({medicalCost:N0} ج.م) رغم غياب التأمين الصحي، ومتبقي {Math.Max(0, savings):N0} ج.م.")
+                : (profile.HasHealthInsurance
+                    ? $"Success: Health insurance mitigated medical shock to {medicalCost:N0} EGP co-pay with {Math.Max(0, savings):N0} EGP savings remaining."
+                    : $"Success: High savings absorbed full uninsured medical cost of {medicalCost:N0} EGP with {Math.Max(0, savings):N0} EGP savings remaining."))
             : (isAr
-                ? $"تعثر في الشهر {defaultMonth}: المصاريف الطارئة استنزفت المدخرات بالكامل وحدث عجز أقصى قدره {maxDeficit:N0} ج.م."
-                : $"Default in month {defaultMonth}: Emergency medical costs depleted all savings with peak deficit of {maxDeficit:N0} EGP.");
+                ? (profile.HasHealthInsurance
+                    ? $"تعثر في الشهر {defaultMonth}: حتى مع وجود التأمين، نسبة التحمل ({medicalCost:N0} ج.م) استنزفت رصيد الطوارئ الهش بعجز أقصى {maxDeficit:N0} ج.م."
+                    : $"تعثر في الشهر {defaultMonth}: غياب التأمين الصحي فرض سداد تكاليف علاجية كاملة ({medicalCost:N0} ج.م) أدت لإفلاس صندوق الطوارئ وعجز قدره {maxDeficit:N0} ج.م.")
+                : (profile.HasHealthInsurance
+                    ? $"Default in month {defaultMonth}: Even with insurance, medical co-pay of {medicalCost:N0} EGP depleted weak reserves with deficit of {maxDeficit:N0} EGP."
+                    : $"Default in month {defaultMonth}: Lack of health insurance imposed {medicalCost:N0} EGP out-of-pocket costs, exhausting savings with deficit of {maxDeficit:N0} EGP."));
 
         return new StressScenarioResult(name, survived, defaultMonth, Math.Round(savings, 2), Math.Round(maxDeficit, 2), desc);
     }
@@ -230,11 +246,12 @@ public class StressTestingEngine : IStressTestingEngine
         decimal maxDeficit = 0m;
         var reducedIncome = profile.TotalNetIncome * 0.80m;
         var inflatedExpenses = profile.FixedMonthlyExpenses * 1.15m;
+        decimal emergencyShock = profile.HasHealthInsurance ? 8_000m : 22_000m;
 
         for (int m = 1; m <= tenor; m++)
         {
             var outflow = inflatedExpenses + profile.CurrentMonthlyInstallments + installment;
-            if (m == 4) outflow += 15_000m;
+            if (m == 4) outflow += emergencyShock;
 
             var netCashFlow = reducedIncome - outflow;
             savings += netCashFlow;
@@ -249,13 +266,17 @@ public class StressTestingEngine : IStressTestingEngine
 
         bool survived = defaultMonth is null;
         string name = isAr
-            ? "أزمة مركبة (تراجع دخل + تضخم + طوارئ مفاجئة)"
-            : "Combined Crisis (Income Drop + Inflation + Sudden Shock)";
+            ? (profile.HasHealthInsurance
+                ? "أزمة مركبة (تراجع دخل + تضخم + طوارئ مع تأمين صحي)"
+                : "أزمة مركبة (تراجع دخل + تضخم + طوارئ بدون تأمين)")
+            : (profile.HasHealthInsurance
+                ? "Combined Crisis (Income Drop + Inflation + Insured Shock)"
+                : "Combined Crisis (Income Drop + Inflation + Uninsured Shock)");
 
         string desc = survived
             ? (isAr
-                ? "نجاح استثنائي: الخطة صمدت أمام صدمة مركبة (انخفاض 20% بالدخل + تضخم 15% + طوارئ 15 ألف)."
-                : "Outstanding resilience: Plan held firm under combined pressure (-20% income, +15% inflation, 15k emergency).")
+                ? $"نجاح استثنائي: الخطة صمدت أمام صدمة مركبة (انخفاض 20% بالدخل + تضخم 15% + طوارئ {emergencyShock:N0} ج.م)."
+                : $"Outstanding resilience: Plan held firm under combined pressure (-20% income, +15% inflation, {emergencyShock:N0} EGP emergency).")
             : (isAr
                 ? $"تعثر حتمي في الشهر {defaultMonth}: الأزمة المركبة تجاوزت كل الاحتياطيات النقدية."
                 : $"Inevitable default in month {defaultMonth}: Multi-faceted crisis exceeded all available cash reserves.");

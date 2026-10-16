@@ -69,6 +69,15 @@ public class AffordabilityAnalyzer : IAffordabilityAnalyzer
             riskFactors.Add("طبيعة العمل كـ Freelancer تتطلب هامش أمان أكبر لاحتمالية تذبذب الدخل.");
         }
 
+        if (!profile.HasHealthInsurance)
+        {
+            if (runwayMonths < 2.5m && risk == RiskLevel.Safe)
+            {
+                risk = RiskLevel.Moderate;
+            }
+            riskFactors.Add("غياب التأمين الصحي يفرض عبئاً إضافياً على صندوق الطوارئ لمواجهة تكاليف العلاج المفاجئ.");
+        }
+
         string summary = risk switch
         {
             RiskLevel.Safe => "القدرة المالية ممتازة: القسط ضمن الحدود الآمنة ويوجد فائض نقدي مريح.",
