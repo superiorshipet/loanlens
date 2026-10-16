@@ -13,12 +13,26 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection") 
-                               ?? "Data Source=loanlens.db";
+                               ?? "Host=localhost;Port=5432;Database=loanlens_db;Username=superior;Password=postgres;";
 
-        services.AddDbContext<LoanLensDbContext>(options =>
+        var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "PostgreSQL";
+
+        if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) || 
+            connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
         {
-            options.UseSqlite(connectionString);
-        });
+            services.AddDbContext<LoanLensDbContext>(options =>
+            {
+                options.UseNpgsql(connectionString);
+            });
+        }
+        else
+        {
+            services.AddDbContext<LoanLensDbContext>(options =>
+            {
+                options.UseSqlite(connectionString);
+            });
+        }
 
         services.Configure<Configuration.AiAdvisorOptions>(
             configuration.GetSection(Configuration.AiAdvisorOptions.SectionName));

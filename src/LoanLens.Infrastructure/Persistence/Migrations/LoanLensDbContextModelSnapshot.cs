@@ -4,6 +4,7 @@ using LoanLens.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,84 +16,147 @@ namespace LoanLens.Infrastructure.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("LoanLens.Infrastructure.Entities.SavedScenarioEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Age")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<int>("CalculationMethod")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("CurrentInstallments")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("CustomerName")
                         .HasMaxLength(150)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(150)");
 
                     b.Property<int>("DependentsCount")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("DtiPercentage")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("FixedExpenses")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("InterestRate")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("MonthlyIncome")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("MonthlyInstallment")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("Principal")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<string>("ReportJson")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("RiskCategory")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<decimal>("RiskScore")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("Savings")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("numeric");
 
                     b.Property<int>("TenorMonths")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Verdict")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("VerdictHeadline")
                         .IsRequired()
                         .HasMaxLength(250)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(250)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("SavedScenarios");
+                });
+
+            modelBuilder.Entity("LoanLens.Infrastructure.Entities.UserEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("LoanLens.Infrastructure.Entities.SavedScenarioEntity", b =>
+                {
+                    b.HasOne("LoanLens.Infrastructure.Entities.UserEntity", "User")
+                        .WithMany("Scenarios")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LoanLens.Infrastructure.Entities.UserEntity", b =>
+                {
+                    b.Navigation("Scenarios");
                 });
 #pragma warning restore 612, 618
         }
