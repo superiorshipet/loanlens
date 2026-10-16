@@ -162,8 +162,21 @@ public class RiskScoringEngine : IRiskScoringEngine
 
         if (!profile.HasHealthInsurance)
         {
-            profileScore += 2m;
-            profileNotes.Add(isAr ? "عدم وجود تأمين صحي يعرض الخطة لمخاطر العلاج المفاجئ" : "Absence of health insurance elevates unexpected medical shock risk");
+            decimal insuranceRisk = profile.DependentsCount >= 2 ? 4m : (profile.DependentsCount == 1 ? 3m : 2m);
+            profileScore += insuranceRisk;
+            profileNotes.Add(isAr 
+                ? (profile.DependentsCount > 0 
+                    ? $"غياب التأمين الصحي مع وجود معالين ({profile.DependentsCount}) يرفع قابلية التعثر في الطوارئ الطبية (+{insuranceRisk:0} درجات مخاطر)" 
+                    : "عدم وجود تأمين صحي يعرض الخطة لمخاطر العلاج المفاجئ (+2 درجات مخاطر)")
+                : (profile.DependentsCount > 0
+                    ? $"Lack of health insurance with {profile.DependentsCount} dependents elevates emergency medical vulnerability (+{insuranceRisk:0} risk pts)"
+                    : "Absence of health insurance elevates unexpected medical shock risk (+2 risk pts)"));
+        }
+        else
+        {
+            profileNotes.Add(isAr 
+                ? "التغطية بالتأمين الصحي توفر حماية فعالة ضد صدمات العلاج المفاجئ" 
+                : "Health insurance coverage provides effective protection against unexpected medical shocks");
         }
 
         profileScore = Math.Min(15m, profileScore);

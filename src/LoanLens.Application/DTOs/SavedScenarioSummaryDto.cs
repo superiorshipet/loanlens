@@ -10,4 +10,5 @@ public record SavedScenarioSummaryDto(
     decimal DtiPercentage,
     decimal RiskScore,
     string RiskCategory,
-    string VerdictHeadline);
+    string VerdictHeadline,
+    Guid? UserId = null);

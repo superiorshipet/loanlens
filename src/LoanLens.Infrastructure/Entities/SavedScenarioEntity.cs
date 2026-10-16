@@ -3,6 +3,8 @@ namespace LoanLens.Infrastructure.Entities;
 public class SavedScenarioEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? UserId { get; set; }
+    public UserEntity? User { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? CustomerName { get; set; }
 

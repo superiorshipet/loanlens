@@ -23,9 +23,10 @@ public class BorrowingCapacityEngine : IBorrowingCapacityEngine
         int maxMonthsUntilRetirement = Math.Max(12, (maxRetirementAge - profile.Age) * 12);
         int effectiveTenor = Math.Min(targetTenorMonths, maxMonthsUntilRetirement);
 
-        // CBE 50% legal ceiling vs 35% safe recommended ceiling
+        // CBE 50% legal ceiling vs safe recommended ceiling (35% if insured, 30% if uninsured to reserve emergency medical buffer)
+        decimal safeDtiThreshold = profile.HasHealthInsurance ? 0.35m : 0.30m;
         decimal legalMaxInstallmentAllowed = Math.Max(0m, (totalIncome * 0.50m) - profile.CurrentMonthlyInstallments);
-        decimal safeInstallmentAllowed = Math.Max(0m, (totalIncome * 0.35m) - profile.CurrentMonthlyInstallments);
+        decimal safeInstallmentAllowed = Math.Max(0m, (totalIncome * safeDtiThreshold) - profile.CurrentMonthlyInstallments);
 
         decimal legalMaxPrincipal = CalculatePrincipalFromInstallment(legalMaxInstallmentAllowed, targetInterestRate, effectiveTenor, calculationMethod);
         decimal safePrincipal = CalculatePrincipalFromInstallment(safeInstallmentAllowed, targetInterestRate, effectiveTenor, calculationMethod);
@@ -38,8 +39,8 @@ public class BorrowingCapacityEngine : IBorrowingCapacityEngine
         decimal remainingAtSafe = totalIncome - profile.FixedMonthlyExpenses - profile.CurrentMonthlyInstallments - safeInstallmentAllowed;
 
         string advice = isAr
-            ? $"الحد الأقصى القانوني للاقتراض وفق ضوابط البنك المركزي (50% DTI) هو {legalMaxPrincipal:N0} ج.م بقسط شهري {legalMaxInstallmentAllowed:N0} ج.م. بينما الحد الآمن الموصى به مالياً للحفاظ على سيولة الطوارئ (35% DTI) هو {safePrincipal:N0} ج.م بقسط شهري {safeInstallmentAllowed:N0} ج.م."
-            : $"According to CBE regulations (50% DTI), your legal borrowing ceiling is {legalMaxPrincipal:N0} EGP (monthly installment {legalMaxInstallmentAllowed:N0} EGP). Your recommended safe borrowing ceiling (35% DTI) to preserve emergency buffer is {safePrincipal:N0} EGP (monthly installment {safeInstallmentAllowed:N0} EGP).";
+            ? $"الحد الأقصى القانوني للاقتراض وفق ضوابط البنك المركزي (50% DTI) هو {legalMaxPrincipal:N0} ج.م بقسط شهري {legalMaxInstallmentAllowed:N0} ج.م. بينما الحد الآمن الموصى به مالياً للحفاظ على سيولة الطوارئ ({(int)(safeDtiThreshold * 100)}% DTI{(profile.HasHealthInsurance ? "" : " - خُفّض إلى 30% لغياب التأمين الصحي كعازل طوارئ")}) هو {safePrincipal:N0} ج.م بقسط شهري {safeInstallmentAllowed:N0} ج.م."
+            : $"According to CBE regulations (50% DTI), your legal borrowing ceiling is {legalMaxPrincipal:N0} EGP (monthly installment {legalMaxInstallmentAllowed:N0} EGP). Your recommended safe borrowing ceiling ({(int)(safeDtiThreshold * 100)}% DTI{(profile.HasHealthInsurance ? "" : " - adjusted down to 30% due to lack of health insurance")}) to preserve emergency buffer is {safePrincipal:N0} EGP (monthly installment {safeInstallmentAllowed:N0} EGP).";
 
         if (effectiveTenor < targetTenorMonths)
         {

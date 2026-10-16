@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
 using LoanLens.Application.Services;
@@ -32,9 +33,14 @@ public class ScenariosController : ApiControllerBase
         _aiAdvisor = aiAdvisor;
     }
 
-    /// <summary>
-    /// Save Evaluated Scenario to Database
-    /// </summary>
+    private Guid? GetCurrentUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    private bool IsAdmin() => User.IsInRole("Admin");
+
     [HttpPost("save-scenario")]
     [HttpPost("scenarios")]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -50,39 +56,39 @@ public class ScenariosController : ApiControllerBase
         }
 
         var report = _service.GenerateFullReport(request!, lang);
-        var id = await _repo.SaveScenarioAsync(request?.CustomerName, report, ct);
+        var userId = GetCurrentUserId();
+        var id = await _repo.SaveScenarioAsync(request?.CustomerName, report, userId, ct);
 
         return CreatedAtAction(nameof(GetById), new { id }, new
         {
             id,
+            userId,
             customerName = request?.CustomerName,
             message = LoanLensLanguage.IsArabic(lang) ? "تم حفظ السيناريو بنجاح في قاعدة البيانات" : "Scenario saved successfully to database",
             report
         });
     }
 
-    /// <summary>
-    /// List Recent Saved Scenarios
-    /// </summary>
     [HttpGet("scenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int count = 20, CancellationToken ct = default)
     {
         var limit = Math.Clamp(count, 1, 100);
-        var list = await _repo.GetRecentScenariosAsync(limit, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var list = await _repo.GetRecentScenariosAsync(limit, userId, isAdmin, ct);
         return Ok(list);
     }
 
-    /// <summary>
-    /// Get Saved Scenario by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var lang = ResolveLanguage();
-        var report = await _repo.GetScenarioByIdAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var report = await _repo.GetScenarioByIdAsync(id, userId, isAdmin, ct);
         if (report is null)
         {
             var message = LoanLensLanguage.IsArabic(lang)
@@ -93,16 +99,15 @@ public class ScenariosController : ApiControllerBase
         return Ok(report);
     }
 
-    /// <summary>
-    /// Download Saved Scenario PDF by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/pdf")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadPdf(Guid id, [FromQuery] bool includeAi = false, CancellationToken ct = default)
     {
         var lang = ResolveLanguage();
-        var report = await _repo.GetScenarioByIdAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var report = await _repo.GetScenarioByIdAsync(id, userId, isAdmin, ct);
         if (report is null)
         {
             var message = LoanLensLanguage.IsArabic(lang)
@@ -122,16 +127,15 @@ public class ScenariosController : ApiControllerBase
         return File(pdfBytes, "application/pdf", fileName);
     }
 
-    /// <summary>
-    /// Download Saved Scenario Excel (.xlsx) by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/excel")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadExcel(Guid id, CancellationToken ct)
     {
         var lang = ResolveLanguage();
-        var report = await _repo.GetScenarioByIdAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var report = await _repo.GetScenarioByIdAsync(id, userId, isAdmin, ct);
         if (report is null)
         {
             var message = LoanLensLanguage.IsArabic(lang)
@@ -145,23 +149,22 @@ public class ScenariosController : ApiControllerBase
         return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 
-    /// <summary>
-    /// Compare Two Saved Scenarios by IDs
-    /// </summary>
     [HttpGet("scenarios/compare")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CompareSaved([FromQuery] Guid id1, [FromQuery] Guid id2, CancellationToken ct)
     {
         var lang = ResolveLanguage();
-        var reportA = await _repo.GetScenarioByIdAsync(id1, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var reportA = await _repo.GetScenarioByIdAsync(id1, userId, isAdmin, ct);
         if (reportA is null)
         {
             var msg = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو الأول بالمعرف {id1}" : $"Scenario 1 not found with ID {id1}";
             return NotFound(new { message = msg });
         }
 
-        var reportB = await _repo.GetScenarioByIdAsync(id2, ct);
+        var reportB = await _repo.GetScenarioByIdAsync(id2, userId, isAdmin, ct);
         if (reportB is null)
         {
             var msg = LoanLensLanguage.IsArabic(lang) ? $"لم يتم العثور على السيناريو الثاني بالمعرف {id2}" : $"Scenario 2 not found with ID {id2}";
@@ -175,16 +178,15 @@ public class ScenariosController : ApiControllerBase
         return Ok(comparison);
     }
 
-    /// <summary>
-    /// Generate AI Narrative Advice for Saved Scenario
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/ai-advice")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetScenarioAiAdvice(Guid id, [FromQuery] string? question, CancellationToken ct)
     {
         var lang = ResolveLanguage(null, question);
-        var report = await _repo.GetScenarioByIdAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var isAdmin = IsAdmin();
+        var report = await _repo.GetScenarioByIdAsync(id, userId, isAdmin, ct);
         if (report is null)
         {
             var message = LoanLensLanguage.IsArabic(lang)

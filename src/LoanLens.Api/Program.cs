@@ -1,12 +1,16 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using LoanLens.Api.Health;
 using LoanLens.Api.Middleware;
 using LoanLens.Application;
 using LoanLens.Infrastructure;
+using LoanLens.Infrastructure.Entities;
 using LoanLens.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,10 +32,38 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
     });
 
-// 4. Register RFC 7807 ProblemDetails
+// 4. Configure JWT Authentication
+var jwtSecret = builder.Configuration.GetValue<string>("Jwt:Secret") 
+                ?? "LoanLensSuperSecretKeyForJwtSigningMustBeVeryLongAndSecure2026!";
+var jwtIssuer = builder.Configuration.GetValue<string>("Jwt:Issuer") ?? "LoanLens.Api";
+var jwtAudience = builder.Configuration.GetValue<string>("Jwt:Audience") ?? "LoanLens.Client";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// 5. Register RFC 7807 ProblemDetails
 builder.Services.AddProblemDetails();
 
-// 5. Configure CORS
+// 6. Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -52,7 +84,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 6. Configure Rate Limiting
+// 7. Configure Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -65,22 +97,25 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// 7. Configure Health Checks
+// 8. Configure Health Checks
 builder.Services.AddHealthChecks()
-    .AddCheck<DatabaseHealthCheck>("sqlite_db", tags: ["db", "ready"]);
+    .AddCheck<DatabaseHealthCheck>("postgres_db", tags: ["db", "ready"])
+    .AddCheck<RedisHealthCheck>("redis_cache", tags: ["cache", "ready"]);
 
-// 8. Configure OpenAPI / Scalar
+// 9. Configure OpenAPI / Scalar
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// 9. Pipeline Middlewares
+// 10. Pipeline Middlewares
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseCors();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
-// 10. Swagger / Scalar API Documentation & Root Redirect
+// 11. Swagger / Scalar API Documentation & Root Redirect
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -90,18 +125,34 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => Results.Redirect("/scalar/v1"))
    .ExcludeFromDescription();
 
-// 11. Health Check Endpoints
+// 12. Health Check Endpoints
 app.MapHealthChecks("/healthz");
 app.MapHealthChecks("/ready");
 
-// 12. Map API Controllers
+// 13. Map API Controllers
 app.MapControllers().RequireRateLimiting("fixed");
 
-// 13. Auto-Apply Database Migrations
+// 14. Auto-Apply Database Migrations and Seed Default Admin
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LoanLensDbContext>();
     db.Database.Migrate();
+
+    // Seed default admin user if no users exist
+    if (!db.Users.Any())
+    {
+        db.Users.Add(new UserEntity
+        {
+            Id = Guid.NewGuid(),
+            Email = "admin@loanlens.com",
+            FullName = "System Administrator",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
+            Role = LoanLens.Domain.Enums.UserRole.Admin,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
+    }
 }
 
 app.Run();

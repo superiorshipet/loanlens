@@ -37,7 +37,8 @@ public class AdvancedBackendFeaturesTests
             CurrentMonthlyInstallments: 5_000m,
             Savings: 60_000m,
             DependentsCount: 1,
-            Age: 30
+            Age: 30,
+            HasHealthInsurance: true
         );
 
         var result = _borrowingEngine.CalculateCapacity(
@@ -55,6 +56,37 @@ public class AdvancedBackendFeaturesTests
         Assert.Equal(50.0m, result.LegalMaxDtiPercentage);
         Assert.Equal(35.0m, result.SafeDtiPercentage);
         Assert.False(string.IsNullOrWhiteSpace(result.AdviceExplanation));
+    }
+
+    [Fact]
+    public void BorrowingCapacity_AdjustsSafeCeiling_WhenBorrowerHasNoHealthInsurance()
+    {
+        // Uninsured borrower: Safe DTI ceiling is lowered from 35% to 30% to reserve contingency medical buffer
+        // Monthly income: 40,000 EGP. Current installments: 5,000 EGP.
+        // Safe 30% max installment = 12,000 - 5,000 = 7,000 EGP.
+        var uninsuredProfile = new FinancialProfile(
+            MonthlyIncome: 40_000m,
+            Stability: IncomeStability.StableEmployed,
+            FixedMonthlyExpenses: 12_000m,
+            CurrentMonthlyInstallments: 5_000m,
+            Savings: 60_000m,
+            DependentsCount: 1,
+            Age: 30,
+            HasHealthInsurance: false
+        );
+
+        var result = _borrowingEngine.CalculateCapacity(
+            uninsuredProfile,
+            targetInterestRate: 20m,
+            targetTenorMonths: 60,
+            calculationMethod: InterestCalculationMethod.Reducing,
+            language: "en"
+        );
+
+        Assert.Equal(15_000m, result.LegalMaxMonthlyInstallment); // Legal 50% remains unchanged
+        Assert.Equal(7_000m, result.SafeMonthlyInstallment);      // Safe is strictly adjusted down to 30%
+        Assert.Equal(30.0m, result.SafeDtiPercentage);
+        Assert.Contains("30%", result.AdviceExplanation);
     }
 
     [Fact]

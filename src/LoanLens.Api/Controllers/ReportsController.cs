@@ -29,9 +29,6 @@ public class ReportsController : ApiControllerBase
         _aiAdvisor = aiAdvisor;
     }
 
-    /// <summary>
-    /// Export Comprehensive Financial Report as PDF
-    /// </summary>
     [HttpPost("export-pdf")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -57,9 +54,6 @@ public class ReportsController : ApiControllerBase
         return File(pdfBytes, "application/pdf", fileName);
     }
 
-    /// <summary>
-    /// Export Amortization Schedule to Excel (.xlsx)
-    /// </summary>
     [HttpPost("export-excel")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
