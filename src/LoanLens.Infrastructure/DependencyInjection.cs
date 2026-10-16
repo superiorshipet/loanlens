@@ -40,6 +40,25 @@ public static class DependencyInjection
         services.Configure<Configuration.JwtOptions>(
             configuration.GetSection(Configuration.JwtOptions.SectionName));
 
+        services.Configure<Configuration.RedisOptions>(
+            configuration.GetSection(Configuration.RedisOptions.SectionName));
+
+        services.AddMemoryCache();
+
+        var redisOptions = configuration.GetSection(Configuration.RedisOptions.SectionName).Get<Configuration.RedisOptions>()
+                           ?? new Configuration.RedisOptions();
+
+        if (redisOptions.Enabled && !string.IsNullOrWhiteSpace(redisOptions.ConnectionString))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisOptions.ConnectionString;
+                options.InstanceName = redisOptions.InstanceName;
+            });
+        }
+
+        services.AddSingleton<ICacheService, RedisCacheService>();
+
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScenarioRepository, ScenarioRepository>();

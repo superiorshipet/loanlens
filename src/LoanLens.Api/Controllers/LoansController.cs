@@ -3,6 +3,7 @@ using LoanLens.Application.Interfaces;
 using LoanLens.Application.Services;
 using LoanLens.Application.Validation;
 using LoanLens.Domain.Localization;
+using LoanLens.Domain.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LoanLens.Api.Controllers;
@@ -14,11 +15,16 @@ public class LoansController : ApiControllerBase
 {
     private readonly ILoanAdvisorService _service;
     private readonly ILoanNarrativeAdvisor _aiAdvisor;
+    private readonly ICacheService _cacheService;
 
-    public LoansController(ILoanAdvisorService service, ILoanNarrativeAdvisor aiAdvisor)
+    public LoansController(
+        ILoanAdvisorService service,
+        ILoanNarrativeAdvisor aiAdvisor,
+        ICacheService cacheService)
     {
         _service = service;
         _aiAdvisor = aiAdvisor;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -131,10 +137,18 @@ public class LoansController : ApiControllerBase
     /// </summary>
     [HttpGet("catalog")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult GetCatalog()
+    public async Task<IActionResult> GetCatalog(CancellationToken ct)
     {
         var lang = ResolveLanguage();
+        var cacheKey = $"catalog:{lang}";
+        var cached = await _cacheService.GetAsync<List<LoanProduct>>(cacheKey, ct);
+        if (cached != null)
+        {
+            return Ok(cached);
+        }
+
         var catalog = _service.GetLoanCatalog(lang);
+        await _cacheService.SetAsync(cacheKey, catalog.ToList(), TimeSpan.FromHours(1), ct);
         return Ok(catalog);
     }
 
