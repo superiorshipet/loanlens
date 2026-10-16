@@ -21,9 +21,6 @@ public class AiAdvisorController : ApiControllerBase
         _aiAdvisor = aiAdvisor;
     }
 
-    /// <summary>
-    /// Generate AI Narrative Loan Advisor Briefing
-    /// </summary>
     [HttpPost("ai-advice")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

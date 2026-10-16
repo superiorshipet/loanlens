@@ -17,9 +17,6 @@ public class MarketRatesController : ApiControllerBase
         _bankRatesService = bankRatesService;
     }
 
-    /// <summary>
-    /// Get Live and Benchmark Egyptian Banking Market Rates (CBE Corridor, Personal Loans, Car Loans, Mortgages)
-    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(BankRatesSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRates([FromQuery] string? lang, CancellationToken ct)
@@ -29,9 +26,6 @@ public class MarketRatesController : ApiControllerBase
         return Ok(rates);
     }
 
-    /// <summary>
-    /// Admin Only: Force Refresh Egyptian Banking Rates Cache
-    /// </summary>
     [Authorize(Roles = "Admin")]
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(BankRatesSummaryDto), StatusCodes.Status200OK)]

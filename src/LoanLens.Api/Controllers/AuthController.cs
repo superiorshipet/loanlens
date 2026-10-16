@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/auth")]
 [Route("api/auth")]
 public class AuthController : ApiControllerBase
 {
@@ -18,9 +17,6 @@ public class AuthController : ApiControllerBase
         _authService = authService;
     }
 
-    /// <summary>
-    /// Register a new user account
-    /// </summary>
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -37,9 +33,6 @@ public class AuthController : ApiControllerBase
         }
     }
 
-    /// <summary>
-    /// Log in with email and password to obtain a JWT token
-    /// </summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -56,9 +49,6 @@ public class AuthController : ApiControllerBase
         }
     }
 
-    /// <summary>
-    /// Get the currently authenticated user's profile
-    /// </summary>
     [HttpGet("me")]
     [Authorize]
     [ProducesResponseType(typeof(UserProfileResponseDto), StatusCodes.Status200OK)]

@@ -543,10 +543,6 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         return list;
     }
 
-    /// <summary>
-    /// Intelligent, multi-tier deterministic rule-based narrative synthesizer.
-    /// Operates with 100% reliability even if external LLM APIs are unreachable.
-    /// </summary>
     public LoanNarrativeAdvice GenerateRuleBasedAdvice(
         ComprehensiveLoanReportDto report,
         string? customerName,

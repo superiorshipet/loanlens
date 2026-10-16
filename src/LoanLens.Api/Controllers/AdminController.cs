@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/admin")]
 [Route("api/admin")]
 [Authorize(Roles = "Admin")]
 public class AdminController : ApiControllerBase
@@ -20,9 +19,6 @@ public class AdminController : ApiControllerBase
         _scenarioRepo = scenarioRepo;
     }
 
-    /// <summary>
-    /// List all registered users (Admin Only)
-    /// </summary>
     [HttpGet("users")]
     [ProducesResponseType(typeof(IReadOnlyList<UserSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllUsers(CancellationToken ct)
@@ -31,9 +27,6 @@ public class AdminController : ApiControllerBase
         return Ok(users);
     }
 
-    /// <summary>
-    /// Delete a user account (Admin Only)
-    /// </summary>
     [HttpDelete("users/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -46,9 +39,6 @@ public class AdminController : ApiControllerBase
         return Ok(new { message = "User deleted successfully." });
     }
 
-    /// <summary>
-    /// View all saved scenarios across all users (Admin Only)
-    /// </summary>
     [HttpGet("scenarios")]
     [ProducesResponseType(typeof(IReadOnlyList<SavedScenarioSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllScenarios([FromQuery] int count = 50, CancellationToken ct = default)
@@ -57,9 +47,6 @@ public class AdminController : ApiControllerBase
         return Ok(scenarios);
     }
 
-    /// <summary>
-    /// Delete any scenario by ID (Admin Only)
-    /// </summary>
     [HttpDelete("scenarios/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

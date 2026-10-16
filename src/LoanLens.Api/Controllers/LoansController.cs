@@ -27,9 +27,6 @@ public class LoansController : ApiControllerBase
         _cacheService = cacheService;
     }
 
-    /// <summary>
-    /// Calculate Amortization Schedule and APR conversion
-    /// </summary>
     [HttpPost("calculate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -47,9 +44,6 @@ public class LoansController : ApiControllerBase
         return Ok(schedule);
     }
 
-    /// <summary>
-    /// Analyze DTI and Emergency Runway against Central Bank limits
-    /// </summary>
     [HttpPost("affordability")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -67,9 +61,6 @@ public class LoansController : ApiControllerBase
         return Ok(metrics);
     }
 
-    /// <summary>
-    /// Simulate Financial Stress Shocks
-    /// </summary>
     [HttpPost("stress-test")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -87,9 +78,6 @@ public class LoansController : ApiControllerBase
         return Ok(summary);
     }
 
-    /// <summary>
-    /// Run Monte Carlo Default Simulation
-    /// </summary>
     [HttpPost("monte-carlo")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -107,9 +95,6 @@ public class LoansController : ApiControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Comprehensive 360° Loan Analysis Report
-    /// </summary>
     [HttpPost("full-analysis")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -132,9 +117,6 @@ public class LoansController : ApiControllerBase
         return Ok(report);
     }
 
-    /// <summary>
-    /// Get Egyptian Market Loan Products Catalog
-    /// </summary>
     [HttpGet("catalog")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCatalog(CancellationToken ct)
@@ -152,9 +134,6 @@ public class LoansController : ApiControllerBase
         return Ok(catalog);
     }
 
-    /// <summary>
-    /// Side-by-Side Comparison of Two Arbitrary Scenarios
-    /// </summary>
     [HttpPost("compare")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -172,9 +151,6 @@ public class LoansController : ApiControllerBase
         return Ok(comparison);
     }
 
-    /// <summary>
-    /// Calculate Maximum Borrowing Capacity
-    /// </summary>
     [HttpPost("borrowing-capacity")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -192,9 +168,6 @@ public class LoansController : ApiControllerBase
         return Ok(capacity);
     }
 
-    /// <summary>
-    /// Simulate Debt Buyout and Multi-Loan Consolidation
-    /// </summary>
     [HttpPost("debt-consolidation")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -212,9 +185,6 @@ public class LoansController : ApiControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Variable Rate and CBE Corridor Sensitivity Analysis
-    /// </summary>
     [HttpPost("rate-sensitivity")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

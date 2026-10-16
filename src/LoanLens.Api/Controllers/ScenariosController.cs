@@ -41,9 +41,6 @@ public class ScenariosController : ApiControllerBase
 
     private bool IsAdmin() => User.IsInRole("Admin");
 
-    /// <summary>
-    /// Save Evaluated Scenario to Database (Binds to authenticated user if logged in)
-    /// </summary>
     [HttpPost("save-scenario")]
     [HttpPost("scenarios")]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -72,9 +69,6 @@ public class ScenariosController : ApiControllerBase
         });
     }
 
-    /// <summary>
-    /// List Saved Scenarios (Filtered to current user if authenticated; all for admin)
-    /// </summary>
     [HttpGet("scenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int count = 20, CancellationToken ct = default)
@@ -86,9 +80,6 @@ public class ScenariosController : ApiControllerBase
         return Ok(list);
     }
 
-    /// <summary>
-    /// Get Saved Scenario by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -108,9 +99,6 @@ public class ScenariosController : ApiControllerBase
         return Ok(report);
     }
 
-    /// <summary>
-    /// Download Saved Scenario PDF by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/pdf")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -139,9 +127,6 @@ public class ScenariosController : ApiControllerBase
         return File(pdfBytes, "application/pdf", fileName);
     }
 
-    /// <summary>
-    /// Download Saved Scenario Excel (.xlsx) by ID
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/excel")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -164,9 +149,6 @@ public class ScenariosController : ApiControllerBase
         return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 
-    /// <summary>
-    /// Compare Two Saved Scenarios by IDs
-    /// </summary>
     [HttpGet("scenarios/compare")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -196,9 +178,6 @@ public class ScenariosController : ApiControllerBase
         return Ok(comparison);
     }
 
-    /// <summary>
-    /// Generate AI Narrative Advice for Saved Scenario
-    /// </summary>
     [HttpGet("scenarios/{id:guid}/ai-advice")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
