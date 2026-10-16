@@ -15,6 +15,9 @@ public static class DependencyInjection
         services.AddSingleton<IMonteCarloEngine, MonteCarloEngine>();
         services.AddSingleton<IRiskScoringEngine, RiskScoringEngine>();
         services.AddSingleton<IRecommendationEngine, RecommendationEngine>();
+        services.AddSingleton<IBorrowingCapacityEngine, BorrowingCapacityEngine>();
+        services.AddSingleton<IDebtConsolidationEngine, DebtConsolidationEngine>();
+        services.AddSingleton<IRateSensitivityEngine, RateSensitivityEngine>();
 
         // Application Services
         services.AddScoped<ILoanAdvisorService, LoanAdvisorService>();

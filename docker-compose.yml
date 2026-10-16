@@ -1,0 +1,26 @@
+services:
+  loanlens-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: loanlens-api
+    restart: unless-stopped
+    ports:
+      - "5257:5257"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/loanlens.db
+      - AiAdvisor__Provider=Gemini
+      - AiAdvisor__GeminiApiKey=${GEMINI_API_KEY:-}
+      - AiAdvisor__GroqApiKey=${GROQ_API_KEY:-}
+    volumes:
+      - loanlens-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5257/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  loanlens-data:

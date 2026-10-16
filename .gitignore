@@ -9,8 +9,24 @@
 *.suo
 *.userosscache
 *.sln.docstates
+TestResults/
+[Tt]est[Rr]esults/
+*.trx
+coverage/
+*.cobertura.xml
+appsettings.*.local.json
 
 ## OS & Temp
 .dist/
 .DS_Store
 Thumbs.db
+
+## SQLite Databases & Local Storage
+*.db
+*.db-shm
+*.db-wal
+/data/
+
+## Exported Artifacts
+*.pdf
+*.xlsx

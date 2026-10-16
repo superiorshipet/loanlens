@@ -11,4 +11,5 @@ public record ComprehensiveLoanReportDto(
     MonteCarloSimulationResult MonteCarlo,
     RiskEvaluation RiskEvaluation,
     FinalAdvisorDecision Recommendation,
-    DateTime GeneratedAtUtc);
+    DateTime GeneratedAtUtc,
+    LoanNarrativeAdvice? AiNarrative = null);

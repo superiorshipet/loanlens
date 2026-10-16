@@ -1,6 +1,117 @@
-@LoanLens.Api_HostAddress = http://localhost:5257
+@Host = http://localhost:5257
 
-GET {{LoanLens.Api_HostAddress}}/weatherforecast/
+### 1. Health Checks
+GET {{Host}}/healthz
 Accept: application/json
 
-###
+### 2. Readiness Check
+GET {{Host}}/ready
+Accept: application/json
+
+### 3. Calculate Amortization Schedule
+POST {{Host}}/api/v1/loans/calculate
+Content-Type: application/json
+
+{
+  "principal": 100000,
+  "tenorMonths": 24,
+  "annualInterestRatePercentage": 22.0,
+  "calculationMethod": 1,
+  "rateType": 1,
+  "adminFeePercentage": 1.5
+}
+
+### 4. Analyze Affordability (DTI & Emergency Runway)
+POST {{Host}}/api/v1/loans/affordability
+Content-Type: application/json
+
+{
+  "profile": {
+    "monthlyIncome": 25000,
+    "age": 32,
+    "stability": 1,
+    "fixedMonthlyExpenses": 9000,
+    "currentMonthlyInstallments": 1500,
+    "savings": 40000,
+    "dependentsCount": 1,
+    "hasHealthInsurance": true
+  },
+  "loan": {
+    "principal": 100000,
+    "tenorMonths": 36,
+    "annualInterestRatePercentage": 22.0,
+    "calculationMethod": 1,
+    "rateType": 1,
+    "adminFeePercentage": 1.5
+  }
+}
+
+### 5. Stress Testing Shocks
+POST {{Host}}/api/v1/loans/stress-test
+Content-Type: application/json
+
+{
+  "profile": {
+    "monthlyIncome": 25000,
+    "age": 32,
+    "stability": 1,
+    "fixedMonthlyExpenses": 9000,
+    "currentMonthlyInstallments": 1500,
+    "savings": 40000,
+    "dependentsCount": 1,
+    "hasHealthInsurance": true
+  },
+  "loan": {
+    "principal": 100000,
+    "tenorMonths": 36,
+    "annualInterestRatePercentage": 22.0,
+    "calculationMethod": 1,
+    "rateType": 1,
+    "adminFeePercentage": 1.5
+  }
+}
+
+### 6. Monte Carlo Default Probability Simulation
+POST {{Host}}/api/v1/loans/monte-carlo
+Content-Type: application/json
+
+{
+  "profile": {
+    "monthlyIncome": 25000,
+    "age": 32,
+    "stability": 1,
+    "fixedMonthlyExpenses": 9000,
+    "currentMonthlyInstallments": 1500,
+    "savings": 40000,
+    "dependentsCount": 1,
+    "hasHealthInsurance": true
+  },
+  "loan": {
+    "principal": 100000,
+    "tenorMonths": 36,
+    "annualInterestRatePercentage": 22.0,
+    "calculationMethod": 1,
+    "rateType": 1,
+    "adminFeePercentage": 1.5
+  },
+  "iterations": 5000
+}
+
+### 7. Get Egyptian Market Loan Catalog
+GET {{Host}}/api/v1/loans/catalog
+Accept: application/json
+
+### 8. List Recent Saved Scenarios
+GET {{Host}}/api/v1/loans/scenarios?count=10
+Accept: application/json
+
+### 9. Calculate Maximum Borrowing Capacity
+POST {{Host}}/api/v1/loans/borrowing-capacity
+Content-Type: application/json
+
+{
+  "monthlyIncome": 25000,
+  "existingMonthlyObligations": 2000,
+  "tenorMonths": 36,
+  "expectedAnnualInterestRatePercentage": 22.0
+}
