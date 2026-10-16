@@ -2,9 +2,10 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512bd4.svg?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120.svg?style=for-the-badge&logo=csharp)](https://learn.microsoft.com/en-us/dotnet/csharp/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169e1.svg?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-Distributed%20Cache-dc382d.svg?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-blue.svg?style=for-the-badge)](#-architecture--solution-design)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg?style=for-the-badge&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Unit%20Tests-35%2F35%20Passing-success.svg?style=for-the-badge)](#-testing--quality-assurance)
+[![Tests](https://img.shields.io/badge/Unit%20Tests-41%2F41%20Passing-success.svg?style=for-the-badge)](#-testing--quality-assurance)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 **LoanLens** is a high-performance, enterprise-grade financial engineering and advisory engine tailored for the Egyptian retail banking and consumer finance ecosystem. It empowers consumers, loan officers, and fintech platforms to assess loan affordability, simulate economic shocks, run stochastic default simulations, and generate personalized advisory narratives powered by LLMs (Google Gemini & Groq).
@@ -25,8 +26,9 @@
   - [7. Borrowing Capacity & Retirement Ceiling Engine](#7-borrowing-capacity--retirement-ceiling-engine)
   - [8. Debt Consolidation & Buyout Engine](#8-debt-consolidation--buyout-engine)
   - [9. CBE Corridor Sensitivity Engine](#9-cbe-corridor-sensitivity-engine)
-  - [10. AI Narrative Advisory Engine](#10-ai-narrative-advisory-engine)
-  - [11. Document & Spreadsheet Generation](#11-document--spreadsheet-generation)
+  - [10. Live Egyptian Banking Market Rates & CBE Corridor](#10-live-egyptian-banking-market-rates--cbe-corridor)
+  - [11. AI Narrative Advisory Engine](#11-ai-narrative-advisory-engine)
+  - [12. Document & Spreadsheet Generation](#12-document--spreadsheet-generation)
 - [RESTful API Endpoints](#-restful-api-endpoints)
 - [Security & Production Hardening](#-security--production-hardening)
 - [Getting Started & Local Setup](#-getting-started--local-setup)
@@ -42,7 +44,10 @@ In volatile macroeconomic environments, conventional credit scoring fails to ref
 1. **Egyptian Central Bank (CBE) Regulations:** Strict compliance with the 50% legal Debt-To-Income (DTI) ceiling and 30%–35% safe recommended thresholds.
 2. **Deterministic Stress Shocks:** Testing liquidity survival against unemployment, 25% salary slashes, double-digit inflation, and emergency hospital bills.
 3. **Stochastic Monte Carlo Simulations:** Executing 5,000 to 50,000 multi-threaded iterations using Box-Muller transforms to model probability of default and cash-flow depletion.
-4. **Autonomous AI Advisory:** Synthesizing bilingual (Arabic & English) advisory briefings with concrete step-by-step financial roadmaps.
+4. **Live Egyptian Banking Rates Feed:** Continuous benchmark tracking of CBE corridor rates (Overnight Lending, Overnight Deposit, Main Operation) alongside NBE, Banque Misr, CIB, and QNB loan products.
+5. **Resilient Redis Distributed Caching:** Sub-millisecond cached catalog queries with automatic in-memory fallback.
+6. **Enterprise Identity & RBAC:** JWT authentication supporting isolated user workspaces and administrative oversight.
+7. **Autonomous AI Advisory:** Synthesizing bilingual (Arabic & English) advisory briefings with concrete step-by-step financial roadmaps.
 
 ---
 
@@ -54,35 +59,35 @@ The solution strictly adheres to **Clean Architecture** and follows the **Single
 LoanLens/
 ├── src/
 │   ├── LoanLens.Domain/                 # Core business domain (Zero external dependencies)
-│   │   ├── Enums/                       # Strongly typed enums (1 file per enum)
+│   │   ├── Enums/                       # Strongly typed enums (UserRole, InterestCalculationMethod, etc.)
 │   │   ├── ValueObjects/                # Immutable domain models & financial calculation results
 │   │   ├── Services/                    # Pure domain engines (FinancialCalculator, StressTesting, etc.)
 │   │   └── Localization/                # Language constants and automatic Arabic/English detection
 │   │
 │   ├── LoanLens.Application/            # Application orchestration layer
 │   │   ├── DTOs/                        # Request and response contracts (1 file per record)
-│   │   ├── Interfaces/                  # Abstractions for persistence, AI, PDF, and Excel
+│   │   ├── Interfaces/                  # Abstractions for persistence, auth, cache, market rates, AI, PDF
 │   │   ├── Services/                    # LoanAdvisorService (Core use case pipeline)
 │   │   └── Validation/                  # Fluent domain validation with bilingual error messages
 │   │
-│   ├── LoanLens.Infrastructure/         # External integrations & persistence
-│   │   ├── Configuration/               # Options pattern bindings (AiAdvisorOptions)
-│   │   ├── Entities/                    # EF Core database entities (SavedScenarioEntity)
-│   │   ├── Persistence/                 # LoanLensDbContext & EF Core Migrations (SQLite)
-│   │   ├── Repositories/                # ScenarioRepository implementation
-│   │   └── Services/                    # QuestPDF report service, ClosedXML Excel service, Gemini/Groq LLM
+│   ├── LoanLens.Infrastructure/         # External integrations, caching & persistence
+│   │   ├── Configuration/               # Options pattern bindings (JwtOptions, RedisOptions, AiAdvisorOptions)
+│   │   ├── Entities/                    # EF Core entities (UserEntity, SavedScenarioEntity)
+│   │   ├── Persistence/                 # LoanLensDbContext & PostgreSQL EF Core Migrations
+│   │   ├── Repositories/                # ScenarioRepository implementation with user isolation
+│   │   └── Services/                    # AuthService, JwtTokenGenerator, RedisCacheService, BankRatesService
 │   │
 │   └── LoanLens.Api/                    # Presentation layer
-│       ├── Controllers/                 # RESTful API Controllers (Loans, Scenarios, Reports, AiAdvisor)
+│       ├── Controllers/                 # RESTful Controllers (Loans, Auth, Admin, MarketRates, Scenarios)
 │       ├── Middleware/                  # CorrelationIdMiddleware, Exception Handler, Rate Limiting
-│       ├── Health/                      # DatabaseHealthCheck & readiness probes
-│       └── Program.cs                   # Clean composition root (< 90 lines)
+│       ├── Health/                      # PostgreSQL and Redis HealthChecks & readiness probes
+│       └── Program.cs                   # Clean composition root with JWT, CORS & Scalar documentation
 │
 ├── tests/
-│   └── LoanLens.Domain.Tests/           # 35 xUnit unit tests verifying mathematical precision
+│   └── LoanLens.Domain.Tests/           # 41 xUnit unit tests verifying mathematical precision and security
 ├── .github/workflows/ci.yml             # GitHub Actions CI build, test, and coverage pipeline
 ├── Dockerfile                           # Multi-stage container build (.NET 10 SDK & ASP.NET runtime)
-└── docker-compose.yml                   # Container orchestration with volume persistence
+└── docker-compose.yml                   # Container orchestration (PostgreSQL + Redis + LoanLens.Api)
 ```
 
 ---
@@ -150,12 +155,20 @@ Calculates an objective risk score from 0 (ultra-safe) to 100 (critical default 
 ### 9. CBE Corridor Sensitivity Engine
 - Evaluates the impact of benchmark interest rate shifts (+100 bps, +200 bps, +300 bps, -100 bps, -200 bps) on variable-rate loans, tracking the exact change in monthly installments.
 
-### 10. AI Narrative Advisory Engine
+### 10. Live Egyptian Banking Market Rates & CBE Corridor
+- Tracks Central Bank of Egypt (CBE) corridor benchmarks:
+  - **Overnight Lending Rate:** 28.25% (Corridor Ceiling)
+  - **Overnight Deposit Rate:** 27.25% (Corridor Floor)
+  - **Main Operation Rate:** 27.75%
+- Catalogs retail lending schedules from top Egyptian commercial banks (NBE, Banque Misr, CIB, QNB Alahli, AAIB) across Personal Loans, Auto Loans, and Mortgage finance.
+- Cached in Redis (`market:egyptian-bank-rates`) with 12-hour TTL and on-demand administrator cache busting.
+
+### 11. AI Narrative Advisory Engine
 - Integrates with **Google Gemini 3.5** and **Groq (OpenAI GPT-OSS / Llama / Allam)**.
 - Features intelligent bilingual detection (auto-detects Arabic or English based on text inputs and headers).
 - Synthesizes personalized executive summaries, key strengths, vulnerability warnings, and tailored action plans.
 
-### 11. Document & Spreadsheet Generation
+### 12. Document & Spreadsheet Generation
 - **PDF Generation (`QuestPDF`):** Generates styled, print-ready PDF reports with color-coded risk gauges, stress testing breakdowns, and product comparisons.
 - **Excel Generation (`ClosedXML`):** Exports comprehensive amortization schedules with summary KPIs, formatted currency columns, and principal/interest splits.
 
@@ -163,45 +176,67 @@ Calculates an objective risk score from 0 (ultra-safe) to 100 (critical default 
 
 ## 📡 RESTful API Endpoints
 
-All endpoints support both `/api/v1/loans/...` and `/api/loans/...`.
+All endpoints support both `/api/v1/...` and `/api/...`.
 
-### 1. Loan Calculations & Risk Advisory
+### 1. Identity & Access Management (Authentication)
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `POST` | `/api/v1/auth/register` | Public | Registers a new borrower user and issues a JWT token. First registered user is seeded as Admin. |
+| `POST` | `/api/v1/auth/login` | Public | Authenticates via email & password and returns a JWT Bearer token with roles. |
+| `GET`  | `/api/v1/auth/me` | Authenticated | Retrieves current authenticated user profile, role, and scenario statistics. |
+
+### 2. Administrator Operations
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `GET`  | `/api/v1/admin/users` | Admin Only | Lists all registered platform users with scenario counts and creation dates. |
+| `DELETE`| `/api/v1/admin/users/{id}` | Admin Only | Deactivates or removes a user account and associated records. |
+| `GET`  | `/api/v1/admin/scenarios` | Admin Only | Retrieves all financial scenarios created across all users in the system. |
+| `DELETE`| `/api/v1/admin/scenarios/{id}` | Admin Only | Deletes any scenario across the system. |
+
+### 3. Egyptian Banking Market Rates
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `GET`  | `/api/v1/market-rates` | Public | Returns CBE corridor benchmarks, commercial bank interest rates, and loan category averages (Redis cached). |
+| `POST` | `/api/v1/market-rates/refresh`| Admin Only | Force-refreshes the banking market rates feed and invalidates the Redis cache. |
+
+### 4. Loan Calculations & Risk Advisory
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `POST` | `/api/v1/loans/calculate` | Public | Calculates amortization schedule, monthly payment, and effective APR. |
+| `POST` | `/api/v1/loans/affordability` | Public | Assesses DTI against CBE regulations and calculates emergency runway. |
+| `POST` | `/api/v1/loans/stress-test` | Public | Simulates 7 deterministic macroeconomic stress scenarios. |
+| `POST` | `/api/v1/loans/monte-carlo` | Public | Runs stochastic Monte Carlo default simulation (5,000+ paths). |
+| `POST` | `/api/v1/loans/full-analysis` | Public | 360° diagnostic executing all engines, with optional AI narrative advice. |
+| `GET`  | `/api/v1/loans/catalog` | Public | Retrieves catalog of Egyptian commercial banks and consumer finance products (Redis cached). |
+| `POST` | `/api/v1/loans/borrowing-capacity`| Public | Calculates maximum borrowing capacity under legal and safe ceilings. |
+| `POST` | `/api/v1/loans/debt-consolidation`| Public | Analyzes multi-loan buyout and debt consolidation opportunities. |
+| `POST` | `/api/v1/loans/rate-sensitivity` | Public | Simulates CBE corridor rate hikes and cuts on variable rate loans. |
+| `POST` | `/api/v1/loans/compare` | Public | Performs side-by-side comparative analysis between two arbitrary scenarios. |
+
+### 5. Scenario Persistence & Management
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `POST` | `/api/v1/loans/save-scenario` | Optional Auth | Evaluates and persists a loan scenario into PostgreSQL. Binds to user if authenticated. |
+| `GET`  | `/api/v1/loans/scenarios` | Optional Auth | Lists saved scenarios. Regular users see only their own scenarios; Admins see all. |
+| `GET`  | `/api/v1/loans/scenarios/{id}` | Optional Auth | Retrieves full diagnostic report for a saved scenario by GUID. |
+| `DELETE`| `/api/v1/loans/scenarios/{id}` | Optional Auth | Deletes a scenario (enforces user ownership unless Admin). |
+| `GET`  | `/api/v1/loans/scenarios/{id}/pdf` | Optional Auth | Downloads vector PDF report of a saved scenario. |
+| `GET`  | `/api/v1/loans/scenarios/{id}/excel` | Optional Auth | Downloads Excel schedule (.xlsx) of a saved scenario. |
+| `GET`  | `/api/v1/loans/scenarios/compare` | Optional Auth | Compares two saved scenarios by their IDs (`?id1=...&id2=...`). |
+| `GET`  | `/api/v1/loans/scenarios/{id}/ai-advice` | Optional Auth | Generates on-demand AI advice or answers questions for a saved scenario. |
+
+### 6. Reporting & Exports
+| Method | Endpoint | Access | Description |
+|:---|:---|:---|:---|
+| `POST` | `/api/v1/loans/export-pdf` | Public | Generates and streams branded vector PDF report from request payload. |
+| `POST` | `/api/v1/loans/export-excel` | Public | Generates and streams styled `.xlsx` amortization workbook. |
+| `POST` | `/api/v1/loans/ai-advice` | Public | Generates standalone AI advisory narrative. |
+
+### 7. Health & Diagnostics
 | Method | Endpoint | Description |
 |:---|:---|:---|
-| `POST` | `/api/v1/loans/calculate` | Calculates amortization schedule, monthly payment, and effective APR. |
-| `POST` | `/api/v1/loans/affordability` | Assesses DTI against CBE regulations and calculates emergency runway. |
-| `POST` | `/api/v1/loans/stress-test` | Simulates 7 deterministic macroeconomic stress scenarios. |
-| `POST` | `/api/v1/loans/monte-carlo` | Runs stochastic Monte Carlo default simulation (5,000+ paths). |
-| `POST` | `/api/v1/loans/full-analysis` | 360° diagnostic executing all engines, with optional AI narrative advice. |
-| `GET`  | `/api/v1/loans/catalog` | Retrieves seeded catalog of Egyptian commercial banks and consumer finance products. |
-| `POST` | `/api/v1/loans/borrowing-capacity`| Calculates maximum borrowing capacity under legal and safe ceilings. |
-| `POST` | `/api/v1/loans/debt-consolidation`| Analyzes multi-loan buyout and debt consolidation opportunities. |
-| `POST` | `/api/v1/loans/rate-sensitivity` | Simulates CBE corridor rate hikes and cuts on variable rate loans. |
-| `POST` | `/api/v1/loans/compare` | Performs side-by-side comparative analysis between two arbitrary scenarios. |
-
-### 2. Scenario Persistence & Management
-| Method | Endpoint | Description |
-|:---|:---|:---|
-| `POST` | `/api/v1/loans/save-scenario` | Evaluates and persists a loan scenario into the database. |
-| `GET`  | `/api/v1/loans/scenarios` | Lists recently saved loan scenario summaries. |
-| `GET`  | `/api/v1/loans/scenarios/{id}` | Retrieves full diagnostic report for a saved scenario by GUID. |
-| `GET`  | `/api/v1/loans/scenarios/{id}/pdf` | Downloads vector PDF report of a saved scenario. |
-| `GET`  | `/api/v1/loans/scenarios/{id}/excel` | Downloads Excel schedule (.xlsx) of a saved scenario. |
-| `GET`  | `/api/v1/loans/scenarios/compare` | Compares two saved scenarios by their IDs (`?id1=...&id2=...`). |
-| `GET`  | `/api/v1/loans/scenarios/{id}/ai-advice` | Generates on-demand AI advice or answers questions for a saved scenario. |
-
-### 3. Reporting & Exports
-| Method | Endpoint | Description |
-|:---|:---|:---|
-| `POST` | `/api/v1/loans/export-pdf` | Generates and streams branded vector PDF report from request payload. |
-| `POST` | `/api/v1/loans/export-excel` | Generates and streams styled `.xlsx` amortization workbook. |
-| `POST` | `/api/v1/loans/ai-advice` | Generates standalone AI advisory narrative. |
-
-### 4. Health & Diagnostics
-| Method | Endpoint | Description |
-|:---|:---|:---|
-| `GET`  | `/healthz` | Liveness probe returning `Healthy` status. |
-| `GET`  | `/ready` | Readiness probe verifying database responsiveness. |
+| `GET`  | `/healthz` | Comprehensive health check verifying PostgreSQL database and Redis cache connectivity. |
+| `GET`  | `/ready` | Kubernetes/container readiness probe. |
 
 ---
 
@@ -219,9 +254,19 @@ All endpoints support both `/api/v1/loans/...` and `/api/loans/...`.
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- SQLite3 CLI (optional)
+- [PostgreSQL 16+](https://www.postgresql.org/) running locally on port `5432` (database: `loanlens_db`)
+- [Redis 7+](https://redis.io/) running locally on port `6379`
 
-### 1. Clone & Build
+### 1. Database & Cache Setup
+```bash
+# PostgreSQL database creation
+psql -U postgres -c "CREATE DATABASE loanlens_db;"
+
+# Verify Redis connection
+redis-cli ping # Returns PONG
+```
+
+### 2. Clone & Build
 ```bash
 git clone https://github.com/your-org/loanlens.git
 cd loanlens
@@ -229,18 +274,17 @@ dotnet restore
 dotnet build
 ```
 
-### 2. Configure AI API Keys (User Secrets)
-Store your keys safely outside the Git repository:
+### 3. Configure AI API Keys (Optional)
 ```bash
 dotnet user-secrets set "AiAdvisor:GeminiApiKey" "YOUR_GEMINI_KEY" --project src/LoanLens.Api
 dotnet user-secrets set "AiAdvisor:GroqApiKey" "YOUR_GROQ_KEY" --project src/LoanLens.Api
 ```
 
-### 3. Run the Application
+### 4. Run the Application
 ```bash
 dotnet run --project src/LoanLens.Api
 ```
-The API starts listening on `http://localhost:5257`.
+The API automatically applies pending EF Core PostgreSQL migrations and seeds the default administrator account (`admin@loanlens.com` / `Admin@123456`).
 
 - **Interactive API Documentation (Scalar):** [http://localhost:5257/scalar/v1](http://localhost:5257/scalar/v1)
 - **Health Check Endpoint:** [http://localhost:5257/healthz](http://localhost:5257/healthz)
@@ -253,13 +297,16 @@ The API starts listening on `http://localhost:5257`.
 ```bash
 docker compose up -d --build
 ```
-This builds an optimized multi-stage .NET 10 container running under an unprivileged `app` user, mounts persistent storage for SQLite at `/app/data/loanlens.db`, and configures periodic container health probes.
+This builds and orchestrates the complete production-ready stack:
+- **`loanlens_api`**: Multi-stage .NET 10 container running under an unprivileged `app` user.
+- **`loanlens_postgres`**: PostgreSQL 16 database with persistent storage volume.
+- **`loanlens_redis`**: Redis 7 cache with health probes.
 
 ---
 
 ## 🧪 Testing & Quality Assurance
 
-The test suite contains **35 unit tests** verifying calculation accuracy, APR conversions, Monte Carlo convergence, CBE regulation caps, and health insurance dynamics.
+The test suite contains **41 unit tests** verifying mathematical calculation precision, APR conversions, Monte Carlo convergence, CBE regulation caps, health insurance dynamics, JWT generation, password hashing, and Redis caching:
 
 ```bash
 # Run test suite
@@ -273,7 +320,7 @@ dotnet test tests/LoanLens.Domain.Tests
 The project includes an automated GitHub Actions pipeline (`.github/workflows/ci.yml`) that executes on every push and pull request to `main` and `dev`:
 - Restores dependencies
 - Builds the solution in `Release` configuration
-- Executes all unit tests with XPlat code coverage collection
+- Executes all 41 unit tests with XPlat code coverage collection
 
 ---
 

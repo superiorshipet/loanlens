@@ -115,3 +115,49 @@ Content-Type: application/json
   "tenorMonths": 36,
   "expectedAnnualInterestRatePercentage": 22.0
 }
+
+### 10. User Registration
+POST {{Host}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "Password@123",
+  "fullName": "Ahmed Hassan"
+}
+
+### 11. User / Admin Login
+# @name login
+POST {{Host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@loanlens.com",
+  "password": "Admin@123456"
+}
+
+### 12. Get Current Authenticated User Profile
+@authToken = {{login.response.body.token}}
+GET {{Host}}/api/v1/auth/me
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 13. Admin: List All Registered Users
+GET {{Host}}/api/v1/admin/users
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 14. Admin: List All Scenarios Across All Users
+GET {{Host}}/api/v1/admin/scenarios?count=50
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 15. Get Egyptian Banking Market Rates (CBE Corridor & Commercial Banks)
+GET {{Host}}/api/v1/market-rates
+Accept: application/json
+
+### 16. Admin: Force Refresh Market Rates Cache
+POST {{Host}}/api/v1/market-rates/refresh
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
