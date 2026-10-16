@@ -92,6 +92,7 @@ public class AuthService : IAuthService
     {
         var users = await _db.Users
             .AsNoTracking()
+            .OrderByDescending(u => u.CreatedAt)
             .Select(u => new UserSummaryDto(
                 u.Id,
                 u.Email,
@@ -101,7 +102,6 @@ public class AuthService : IAuthService
                 u.CreatedAt,
                 u.Scenarios.Count
             ))
-            .OrderByDescending(u => u.CreatedAt)
             .ToListAsync(ct);
 
         return users;

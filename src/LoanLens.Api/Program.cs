@@ -99,7 +99,8 @@ builder.Services.AddRateLimiter(options =>
 
 // 8. Configure Health Checks
 builder.Services.AddHealthChecks()
-    .AddCheck<DatabaseHealthCheck>("postgres_db", tags: ["db", "ready"]);
+    .AddCheck<DatabaseHealthCheck>("postgres_db", tags: ["db", "ready"])
+    .AddCheck<RedisHealthCheck>("redis_cache", tags: ["cache", "ready"]);
 
 // 9. Configure OpenAPI / Scalar
 builder.Services.AddOpenApi();
