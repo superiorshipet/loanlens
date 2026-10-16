@@ -17,13 +17,14 @@ public class ScenarioRepository : IScenarioRepository
         _db = db;
     }
 
-    public async Task<Guid> SaveScenarioAsync(string? customerName, ComprehensiveLoanReportDto report, CancellationToken cancellationToken = default)
+    public async Task<Guid> SaveScenarioAsync(string? customerName, ComprehensiveLoanReportDto report, Guid? userId = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(report);
 
         var entity = new SavedScenarioEntity
         {
             Id = Guid.NewGuid(),
+            UserId = userId,
             CreatedAt = DateTime.UtcNow,
             CustomerName = customerName?.Trim(),
             MonthlyIncome = report.UserProfile.MonthlyIncome,
@@ -51,10 +52,16 @@ public class ScenarioRepository : IScenarioRepository
         return entity.Id;
     }
 
-    public async Task<ComprehensiveLoanReportDto?> GetScenarioByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ComprehensiveLoanReportDto?> GetScenarioByIdAsync(Guid id, Guid? userId = null, bool isAdmin = false, CancellationToken cancellationToken = default)
     {
-        var entity = await _db.SavedScenarios.AsNoTracking()
-                              .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        var query = _db.SavedScenarios.AsNoTracking().Where(e => e.Id == id);
+
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(e => e.UserId == userId || e.UserId == null);
+        }
+
+        var entity = await query.FirstOrDefaultAsync(cancellationToken);
 
         if (entity is null || string.IsNullOrWhiteSpace(entity.ReportJson))
             return null;
@@ -62,23 +69,52 @@ public class ScenarioRepository : IScenarioRepository
         return JsonSerializer.Deserialize<ComprehensiveLoanReportDto>(entity.ReportJson, JsonOptions);
     }
 
-    public async Task<IReadOnlyList<SavedScenarioSummaryDto>> GetRecentScenariosAsync(int count = 20, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SavedScenarioSummaryDto>> GetRecentScenariosAsync(int count = 20, Guid? userId = null, bool isAdmin = false, CancellationToken cancellationToken = default)
     {
-        return await _db.SavedScenarios.AsNoTracking()
-                        .OrderByDescending(e => e.CreatedAt)
-                        .Take(count)
-                        .Select(e => new SavedScenarioSummaryDto(
-                            e.Id,
-                            e.CreatedAt,
-                            e.CustomerName,
-                            e.Principal,
-                            e.TenorMonths,
-                            e.MonthlyInstallment,
-                            e.DtiPercentage,
-                            e.RiskScore,
-                            e.RiskCategory,
-                            e.VerdictHeadline
-                        ))
-                        .ToListAsync(cancellationToken);
+        var query = _db.SavedScenarios.AsNoTracking();
+
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(e => e.UserId == userId);
+        }
+
+        return await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(count)
+            .Select(e => new SavedScenarioSummaryDto(
+                e.Id,
+                e.CreatedAt,
+                e.CustomerName,
+                e.Principal,
+                e.TenorMonths,
+                e.MonthlyInstallment,
+                e.DtiPercentage,
+                e.RiskScore,
+                e.RiskCategory,
+                e.VerdictHeadline,
+                e.UserId
+            ))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> DeleteScenarioAsync(Guid id, Guid? userId = null, bool isAdmin = false, CancellationToken cancellationToken = default)
+    {
+        var query = _db.SavedScenarios.Where(e => e.Id == id);
+        if (!isAdmin && userId.HasValue)
+        {
+            query = query.Where(e => e.UserId == userId);
+        }
+
+        var entity = await query.FirstOrDefaultAsync(cancellationToken);
+        if (entity is null) return false;
+
+        _db.SavedScenarios.Remove(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<int> CountUserScenariosAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _db.SavedScenarios.CountAsync(s => s.UserId == userId, cancellationToken);
     }
 }
