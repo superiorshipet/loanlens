@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IScenarioRepository, ScenarioRepository>();
         services.AddScoped<IPdfReportService, LoanPdfReportService>();
         services.AddScoped<IExcelExportService, LoanExcelExportService>();
+        services.AddScoped<IBankRatesService, BankRatesService>();
         services.AddHttpClient<ILoanNarrativeAdvisor, LoanNarrativeAdvisorService>();
 
         return services;
