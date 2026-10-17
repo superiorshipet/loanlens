@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
+using LoanLens.Application.Common;
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
 using LoanLens.Domain.Enums;
@@ -436,6 +438,120 @@ public class IdentityAndMarketRatesTests
 
         // Assert
         Assert.False(resetResult.Success);
+    }
+
+    [Fact]
+    public async Task AuthService_RegisterWithBorrowerProfile_ShouldPersistAllFinancialDetails()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var authService = new AuthService(dbContext, jwtGen);
+
+        var request = new RegisterRequestDto(
+            Email: "borrower.profile@loanlens.com",
+            Password: "Password@123",
+            FullName: "Profile User",
+            Age: 32,
+            Stability: IncomeStability.Freelance,
+            MonthlyIncome: 25000m,
+            FixedMonthlyExpenses: 7000m,
+            CurrentMonthlyInstallments: 1500m,
+            Savings: 60000m,
+            DependentsCount: 2,
+            HasHealthInsurance: true,
+            SecondaryIncome: 3000m
+        );
+
+        // Act - Register
+        var authResult = await authService.RegisterAsync(request);
+
+        // Assert - Profile retrieval
+        var profile = await authService.GetCurrentUserProfileAsync(authResult.UserId);
+        Assert.NotNull(profile);
+        Assert.Equal(32, profile.Age);
+        Assert.Equal(IncomeStability.Freelance, profile.Stability);
+        Assert.Equal(25000m, profile.MonthlyIncome);
+        Assert.Equal(7000m, profile.FixedMonthlyExpenses);
+        Assert.Equal(1500m, profile.CurrentMonthlyInstallments);
+        Assert.Equal(60000m, profile.Savings);
+        Assert.Equal(2, profile.DependentsCount);
+        Assert.True(profile.HasHealthInsurance);
+        Assert.Equal(3000m, profile.SecondaryIncome);
+    }
+
+    [Fact]
+    public async Task AuthService_RegisterWithInvalidAgeOrNegativeIncome_ShouldThrowException()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var authService = new AuthService(dbContext, jwtGen);
+
+        // Act & Assert - Age too young
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            authService.RegisterAsync(new RegisterRequestDto("young@loanlens.com", "Password@123", "Young User", Age: 16)));
+
+        // Act & Assert - Age too old
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            authService.RegisterAsync(new RegisterRequestDto("old@loanlens.com", "Password@123", "Old User", Age: 95)));
+
+        // Act & Assert - Negative income
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            authService.RegisterAsync(new RegisterRequestDto("neg@loanlens.com", "Password@123", "Neg User", MonthlyIncome: -500m)));
+    }
+
+    [Fact]
+    public void FlexibleEnumConverter_ShouldParseStringsIntegersAndQuotedNumbers()
+    {
+        // Arrange
+        var jsonOptions = new JsonSerializerOptions();
+        jsonOptions.Converters.Add(new FlexibleEnumConverterFactory());
+
+        // Act & Assert - Strings by name (case-insensitive)
+        var s1 = JsonSerializer.Deserialize<IncomeStability>("\"Freelance\"", jsonOptions);
+        var s2 = JsonSerializer.Deserialize<IncomeStability>("\"stableemployed\"", jsonOptions);
+        var s3 = JsonSerializer.Deserialize<IncomeStability>("\"BUSINESSOWNER\"", jsonOptions);
+
+        Assert.Equal(IncomeStability.Freelance, s1);
+        Assert.Equal(IncomeStability.StableEmployed, s2);
+        Assert.Equal(IncomeStability.BusinessOwner, s3);
+
+        // Act & Assert - Numeric strings & raw numbers
+        var n1 = JsonSerializer.Deserialize<IncomeStability>("2", jsonOptions);
+        var n2 = JsonSerializer.Deserialize<IncomeStability>("\"2\"", jsonOptions);
+
+        Assert.Equal(IncomeStability.Freelance, n1);
+        Assert.Equal(IncomeStability.Freelance, n2);
+
+        // Act & Assert - CalculationMethod & RateType
+        var calc = JsonSerializer.Deserialize<InterestCalculationMethod>("\"Reducing\"", jsonOptions);
+        var rate = JsonSerializer.Deserialize<InterestRateType>("\"Variable\"", jsonOptions);
+
+        Assert.Equal(InterestCalculationMethod.Reducing, calc);
+        Assert.Equal(InterestRateType.Variable, rate);
+
+        // Act & Assert - Serialization outputs clean word
+        var serialized = JsonSerializer.Serialize(IncomeStability.Freelance, jsonOptions);
+        Assert.Equal("\"Freelance\"", serialized);
     }
 
     private class TestEmailService : IEmailService

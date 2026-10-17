@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using LoanLens.Api.Health;
 using LoanLens.Api.Middleware;
 using LoanLens.Application;
+using LoanLens.Application.Common;
 using LoanLens.Infrastructure;
 using LoanLens.Infrastructure.Entities;
 using LoanLens.Infrastructure.Persistence;
@@ -19,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+    options.SerializerOptions.Converters.Add(new FlexibleEnumConverterFactory());
 });
 
 // 2. Register Application & Infrastructure Services
@@ -30,6 +32,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+        options.JsonSerializerOptions.Converters.Add(new FlexibleEnumConverterFactory());
     });
 
 // 4. Configure JWT Authentication

@@ -45,6 +45,46 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Email is already registered.");
         }
 
+        if (request.Age.HasValue && (request.Age.Value < 18 || request.Age.Value > 85))
+        {
+            throw new InvalidOperationException("Age must be between 18 and 85 years.");
+        }
+
+        if (request.Stability.HasValue && !Enum.IsDefined(typeof(IncomeStability), request.Stability.Value))
+        {
+            throw new InvalidOperationException("Invalid income stability type (Allowed values: StableEmployed, Freelance, BusinessOwner).");
+        }
+
+        if (request.MonthlyIncome.HasValue && request.MonthlyIncome.Value < 0)
+        {
+            throw new InvalidOperationException("Monthly income cannot be negative.");
+        }
+
+        if (request.FixedMonthlyExpenses.HasValue && request.FixedMonthlyExpenses.Value < 0)
+        {
+            throw new InvalidOperationException("Fixed monthly expenses cannot be negative.");
+        }
+
+        if (request.CurrentMonthlyInstallments.HasValue && request.CurrentMonthlyInstallments.Value < 0)
+        {
+            throw new InvalidOperationException("Current monthly installments cannot be negative.");
+        }
+
+        if (request.Savings.HasValue && request.Savings.Value < 0)
+        {
+            throw new InvalidOperationException("Savings cannot be negative.");
+        }
+
+        if (request.DependentsCount.HasValue && request.DependentsCount.Value < 0)
+        {
+            throw new InvalidOperationException("Dependents count cannot be negative.");
+        }
+
+        if (request.SecondaryIncome.HasValue && request.SecondaryIncome.Value < 0)
+        {
+            throw new InvalidOperationException("Secondary income cannot be negative.");
+        }
+
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         var role = await _db.Users.AnyAsync(ct) ? UserRole.User : UserRole.Admin; // First user becomes Admin
 
@@ -56,7 +96,16 @@ public class AuthService : IAuthService
             FullName = request.FullName.Trim(),
             Role = role,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Age = request.Age,
+            Stability = request.Stability,
+            MonthlyIncome = request.MonthlyIncome,
+            FixedMonthlyExpenses = request.FixedMonthlyExpenses,
+            CurrentMonthlyInstallments = request.CurrentMonthlyInstallments,
+            Savings = request.Savings,
+            DependentsCount = request.DependentsCount,
+            HasHealthInsurance = request.HasHealthInsurance,
+            SecondaryIncome = request.SecondaryIncome
         };
 
         _db.Users.Add(user);
@@ -102,7 +151,16 @@ public class AuthService : IAuthService
             FullName: user.FullName,
             Role: user.Role.ToString(),
             CreatedAt: user.CreatedAt,
-            TotalSavedScenarios: scenarioCount
+            TotalSavedScenarios: scenarioCount,
+            Age: user.Age,
+            Stability: user.Stability,
+            MonthlyIncome: user.MonthlyIncome,
+            FixedMonthlyExpenses: user.FixedMonthlyExpenses,
+            CurrentMonthlyInstallments: user.CurrentMonthlyInstallments,
+            Savings: user.Savings,
+            DependentsCount: user.DependentsCount,
+            HasHealthInsurance: user.HasHealthInsurance,
+            SecondaryIncome: user.SecondaryIncome
         );
     }
 
@@ -135,7 +193,10 @@ public class AuthService : IAuthService
                 u.Role.ToString(),
                 u.IsActive,
                 u.CreatedAt,
-                u.Scenarios.Count
+                u.Scenarios.Count,
+                u.Age,
+                u.Stability,
+                u.MonthlyIncome
             ))
             .ToListAsync(ct);
 
@@ -219,6 +280,67 @@ public class AuthService : IAuthService
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         }
 
+        if (request.Age.HasValue)
+        {
+            if (request.Age.Value < 18 || request.Age.Value > 85)
+                throw new InvalidOperationException("Age must be between 18 and 85 years.");
+            user.Age = request.Age.Value;
+        }
+
+        if (request.Stability.HasValue)
+        {
+            if (!Enum.IsDefined(typeof(IncomeStability), request.Stability.Value))
+                throw new InvalidOperationException("Invalid income stability type.");
+            user.Stability = request.Stability.Value;
+        }
+
+        if (request.MonthlyIncome.HasValue)
+        {
+            if (request.MonthlyIncome.Value < 0)
+                throw new InvalidOperationException("Monthly income cannot be negative.");
+            user.MonthlyIncome = request.MonthlyIncome.Value;
+        }
+
+        if (request.FixedMonthlyExpenses.HasValue)
+        {
+            if (request.FixedMonthlyExpenses.Value < 0)
+                throw new InvalidOperationException("Fixed monthly expenses cannot be negative.");
+            user.FixedMonthlyExpenses = request.FixedMonthlyExpenses.Value;
+        }
+
+        if (request.CurrentMonthlyInstallments.HasValue)
+        {
+            if (request.CurrentMonthlyInstallments.Value < 0)
+                throw new InvalidOperationException("Current monthly installments cannot be negative.");
+            user.CurrentMonthlyInstallments = request.CurrentMonthlyInstallments.Value;
+        }
+
+        if (request.Savings.HasValue)
+        {
+            if (request.Savings.Value < 0)
+                throw new InvalidOperationException("Savings cannot be negative.");
+            user.Savings = request.Savings.Value;
+        }
+
+        if (request.DependentsCount.HasValue)
+        {
+            if (request.DependentsCount.Value < 0)
+                throw new InvalidOperationException("Dependents count cannot be negative.");
+            user.DependentsCount = request.DependentsCount.Value;
+        }
+
+        if (request.HasHealthInsurance.HasValue)
+        {
+            user.HasHealthInsurance = request.HasHealthInsurance.Value;
+        }
+
+        if (request.SecondaryIncome.HasValue)
+        {
+            if (request.SecondaryIncome.Value < 0)
+                throw new InvalidOperationException("Secondary income cannot be negative.");
+            user.SecondaryIncome = request.SecondaryIncome.Value;
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return new UserSummaryDto(
@@ -228,7 +350,10 @@ public class AuthService : IAuthService
             user.Role.ToString(),
             user.IsActive,
             user.CreatedAt,
-            user.Scenarios.Count
+            user.Scenarios.Count,
+            user.Age,
+            user.Stability,
+            user.MonthlyIncome
         );
     }
 

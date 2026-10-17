@@ -24,6 +24,13 @@ public class LoanLensDbContext : DbContext
             entity.Property(e => e.FullName).HasMaxLength(150);
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.Role).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Stability).HasConversion<string>().HasMaxLength(30);
+
+            entity.Property(e => e.MonthlyIncome).HasPrecision(18, 2);
+            entity.Property(e => e.FixedMonthlyExpenses).HasPrecision(18, 2);
+            entity.Property(e => e.CurrentMonthlyInstallments).HasPrecision(18, 2);
+            entity.Property(e => e.Savings).HasPrecision(18, 2);
+            entity.Property(e => e.SecondaryIncome).HasPrecision(18, 2);
 
             entity.HasMany(u => u.Scenarios)
                   .WithOne(s => s.User)
