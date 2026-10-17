@@ -294,4 +294,170 @@ public class IdentityAndMarketRatesTests
         Assert.Equal(2, dashboard.RecentUsers.Count);
         Assert.Equal(28.25m, dashboard.MarketStats.CbeLendingRate);
     }
+
+    [Fact]
+    public async Task AuthService_RequestPasswordReset_ShouldSendEmailAndStoreToken()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance);
+        var testEmailService = new TestEmailService();
+        var authService = new AuthService(dbContext, jwtGen, null, cacheService, testEmailService);
+
+        await authService.RegisterAsync(new RegisterRequestDto("resetuser@loanlens.com", "OldPassword@123", "Reset User"));
+
+        // Act
+        var result = await authService.RequestPasswordResetAsync(new ForgotPasswordRequestDto("resetuser@loanlens.com"));
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Single(testEmailService.SentResetEmails);
+        var sentEmail = testEmailService.SentResetEmails[0];
+        Assert.Equal("resetuser@loanlens.com", sentEmail.To);
+        Assert.NotEmpty(sentEmail.Token);
+
+        // Verify token in cache
+        var cachedEmail = await cacheService.GetAsync<string>($"auth:reset-token:{sentEmail.Token}");
+        Assert.Equal("resetuser@loanlens.com", cachedEmail);
+    }
+
+    [Fact]
+    public async Task AuthService_ResetPassword_WithValidToken_ShouldSucceedAndAllowNewLogin()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance);
+        var testEmailService = new TestEmailService();
+        var authService = new AuthService(dbContext, jwtGen, null, cacheService, testEmailService);
+
+        await authService.RegisterAsync(new RegisterRequestDto("user@loanlens.com", "OldPassword@123", "User Name"));
+
+        // Request reset
+        await authService.RequestPasswordResetAsync(new ForgotPasswordRequestDto("user@loanlens.com"));
+        var token = testEmailService.SentResetEmails[0].Token;
+
+        // Act - Reset password
+        var resetResult = await authService.ResetPasswordAsync(new ResetPasswordRequestDto("user@loanlens.com", token, "BrandNewPassword@456"));
+
+        // Assert
+        Assert.True(resetResult.Success);
+        Assert.Single(testEmailService.SentSuccessEmails);
+
+        // Token should be invalidated from cache
+        var cachedEmailAfter = await cacheService.GetAsync<string>($"auth:reset-token:{token}");
+        Assert.Null(cachedEmailAfter);
+
+        // Login with old password should fail
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            authService.LoginAsync(new LoginRequestDto("user@loanlens.com", "OldPassword@123")));
+
+        // Login with new password should succeed
+        var loginResult = await authService.LoginAsync(new LoginRequestDto("user@loanlens.com", "BrandNewPassword@456"));
+        Assert.NotNull(loginResult);
+        Assert.Equal("user@loanlens.com", loginResult.Email);
+    }
+
+    [Fact]
+    public async Task AuthService_ResetPassword_WithInvalidToken_ShouldFail()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance);
+        var testEmailService = new TestEmailService();
+        var authService = new AuthService(dbContext, jwtGen, null, cacheService, testEmailService);
+
+        await authService.RegisterAsync(new RegisterRequestDto("user@loanlens.com", "Password@123", "User"));
+
+        // Act - Try reset with bogus token
+        var resetResult = await authService.ResetPasswordAsync(new ResetPasswordRequestDto("user@loanlens.com", "invalid-token", "NewPassword@123"));
+
+        // Assert
+        Assert.False(resetResult.Success);
+        Assert.Empty(testEmailService.SentSuccessEmails);
+    }
+
+    [Fact]
+    public async Task AuthService_ResetPassword_WithShortPassword_ShouldFail()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance);
+        var testEmailService = new TestEmailService();
+        var authService = new AuthService(dbContext, jwtGen, null, cacheService, testEmailService);
+
+        await authService.RegisterAsync(new RegisterRequestDto("user@loanlens.com", "Password@123", "User"));
+
+        // Act - Try reset with password shorter than 6 characters
+        var resetResult = await authService.ResetPasswordAsync(new ResetPasswordRequestDto("user@loanlens.com", "any-token", "123"));
+
+        // Assert
+        Assert.False(resetResult.Success);
+    }
+
+    private class TestEmailService : IEmailService
+    {
+        public List<(string To, string Subject, string Token)> SentResetEmails { get; } = new();
+        public List<(string To, string Subject)> SentSuccessEmails { get; } = new();
+
+        public Task SendPasswordResetEmailAsync(string toEmail, string recipientName, string resetToken, string language = "en", CancellationToken ct = default)
+        {
+            SentResetEmails.Add((toEmail, language == "ar" ? "إعادة تعيين كلمة المرور" : "Reset Your Password", resetToken));
+            return Task.CompletedTask;
+        }
+
+        public Task SendPasswordResetSuccessEmailAsync(string toEmail, string recipientName, string language = "en", CancellationToken ct = default)
+        {
+            SentSuccessEmails.Add((toEmail, language == "ar" ? "تم تحديث كلمة المرور بنجاح" : "Your Password Was Successfully Reset"));
+            return Task.CompletedTask;
+        }
+
+        public Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
 }

@@ -179,6 +179,74 @@
             },
             "description": "Fetches profile, roles, and scenario count for currently authenticated token."
           }
+        },
+        {
+          "name": "5. Forgot Password (Request Reset Email & Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@loanlens.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Sends a password reset token and instructions to the user's email via Gmail SMTP, cached in Redis for 15 minutes."
+          }
+        },
+        {
+          "name": "6. Reset Password (Verify Token & Set New Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@loanlens.com\",\n  \"token\": \"PASTE_TOKEN_FROM_EMAIL_HERE\",\n  \"newPassword\": \"Admin@12345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Verifies the 15-minute token from Redis, updates user password hash, invalidates token, and sends a confirmation email."
+          }
         }
       ]
     },

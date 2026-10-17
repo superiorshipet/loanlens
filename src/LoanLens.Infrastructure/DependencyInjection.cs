@@ -46,6 +46,9 @@ public static class DependencyInjection
         services.Configure<Configuration.ScraperOptions>(
             configuration.GetSection(Configuration.ScraperOptions.SectionName));
 
+        services.Configure<Configuration.SmtpOptions>(
+            configuration.GetSection(Configuration.SmtpOptions.SectionName));
+
         services.AddMemoryCache();
 
         var redisOptions = configuration.GetSection(Configuration.RedisOptions.SectionName).Get<Configuration.RedisOptions>()
@@ -63,6 +66,7 @@ public static class DependencyInjection
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScenarioRepository, ScenarioRepository>();
         services.AddScoped<IPdfReportService, LoanPdfReportService>();

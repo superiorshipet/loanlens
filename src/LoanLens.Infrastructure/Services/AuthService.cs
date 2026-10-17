@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using LoanLens.Application.DTOs;
 using LoanLens.Application.Interfaces;
 using LoanLens.Domain.Enums;
+using LoanLens.Domain.Localization;
 using LoanLens.Infrastructure.Entities;
 using LoanLens.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +15,10 @@ public class AuthService : IAuthService
     private readonly IJwtTokenGenerator _jwtGenerator;
     private readonly IBankRatesService? _bankRatesService;
     private readonly ICacheService? _cacheService;
+    private readonly IEmailService? _emailService;
 
     public AuthService(LoanLensDbContext db, IJwtTokenGenerator jwtGenerator)
-        : this(db, jwtGenerator, null, null)
+        : this(db, jwtGenerator, null, null, null)
     {
     }
 
@@ -23,12 +26,14 @@ public class AuthService : IAuthService
         LoanLensDbContext db,
         IJwtTokenGenerator jwtGenerator,
         IBankRatesService? bankRatesService,
-        ICacheService? cacheService)
+        ICacheService? cacheService,
+        IEmailService? emailService = null)
     {
         _db = db;
         _jwtGenerator = jwtGenerator;
         _bankRatesService = bankRatesService;
         _cacheService = cacheService;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request, CancellationToken ct = default)
@@ -404,5 +409,96 @@ public class AuthService : IAuthService
             CacheStatus: "In-Memory Fallback Active",
             RatesLastRefreshed: now
         );
+    }
+
+    public async Task<PasswordResetResponseDto> RequestPasswordResetAsync(ForgotPasswordRequestDto request, string language = "en", CancellationToken ct = default)
+    {
+        var isAr = LoanLensLanguage.IsArabic(language);
+        var genericMessage = isAr
+            ? "إذا كان هذا البريد الإلكتروني مسجلاً لدينا، فقد تم إرسال تعليمات ورمز إعادة تعيين كلمة المرور."
+            : "If an account with this email exists, password reset instructions and token have been sent.";
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return new PasswordResetResponseDto(false, isAr ? "يرجى إدخال البريد الإلكتروني." : "Email is required.");
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.IsActive, ct);
+
+        if (user != null)
+        {
+            var tokenBytes = RandomNumberGenerator.GetBytes(32);
+            var token = Convert.ToHexString(tokenBytes).ToLowerInvariant();
+
+            var cacheKey = $"auth:reset-token:{token}";
+            if (_cacheService != null)
+            {
+                await _cacheService.SetAsync(cacheKey, user.Email, TimeSpan.FromMinutes(15), ct);
+            }
+
+            if (_emailService != null)
+            {
+                await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, token, isAr ? "ar" : "en", ct);
+            }
+        }
+
+        return new PasswordResetResponseDto(true, genericMessage, normalizedEmail);
+    }
+
+    public async Task<PasswordResetResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request, string language = "en", CancellationToken ct = default)
+    {
+        var isAr = LoanLensLanguage.IsArabic(language);
+
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            var msg = isAr ? "جميع الحقول (البريد، الرمز، وكلمة المرور الجديدة) مطلوبة." : "Email, token, and new password are all required.";
+            return new PasswordResetResponseDto(false, msg);
+        }
+
+        if (request.NewPassword.Length < 6)
+        {
+            var msg = isAr ? "يجب ألا تقل كلمة المرور عن 6 أحرف." : "Password must be at least 6 characters long.";
+            return new PasswordResetResponseDto(false, msg);
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var token = request.Token.Trim().ToLowerInvariant();
+        var cacheKey = $"auth:reset-token:{token}";
+
+        string? cachedEmail = null;
+        if (_cacheService != null)
+        {
+            cachedEmail = await _cacheService.GetAsync<string>(cacheKey, ct);
+        }
+
+        if (string.IsNullOrWhiteSpace(cachedEmail) || !cachedEmail.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            var msg = isAr ? "رمز إعادة تعيين كلمة المرور غير صالح أو انتهت صلاحيته (15 دقيقة)." : "Invalid or expired password reset token.";
+            return new PasswordResetResponseDto(false, msg);
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct);
+        if (user == null)
+        {
+            var msg = isAr ? "لم يتم العثور على المستخدم." : "User not found.";
+            return new PasswordResetResponseDto(false, msg);
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _db.SaveChangesAsync(ct);
+
+        if (_cacheService != null)
+        {
+            await _cacheService.RemoveAsync(cacheKey, ct);
+        }
+
+        if (_emailService != null)
+        {
+            await _emailService.SendPasswordResetSuccessEmailAsync(user.Email, user.FullName, isAr ? "ar" : "en", ct);
+        }
+
+        var successMsg = isAr ? "تمت إعادة تعيين كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة." : "Password has been successfully reset. You can now log in with your new password.";
+        return new PasswordResetResponseDto(true, successMsg, user.Email);
     }
 }

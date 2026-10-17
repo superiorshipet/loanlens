@@ -12,4 +12,6 @@ public interface IAuthService
     Task<UserSummaryDto?> UpdateUserAsync(Guid id, UpdateUserRequestDto request, CancellationToken ct = default);
     Task<bool> DeleteUserAsync(Guid id, CancellationToken ct = default);
     Task<AdminDashboardDto> GetAdminDashboardAsync(CancellationToken ct = default);
+    Task<PasswordResetResponseDto> RequestPasswordResetAsync(ForgotPasswordRequestDto request, string language = "en", CancellationToken ct = default);
+    Task<PasswordResetResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request, string language = "en", CancellationToken ct = default);
 }
