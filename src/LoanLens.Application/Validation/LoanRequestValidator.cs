@@ -40,10 +40,10 @@ public static class LoanRequestValidator
             AddError(errors, "loan.latePaymentPenaltyPercentage", isAr ? "نسبة غرامة التأخير يجب أن تكون بين 0% و 25%." : "Late payment penalty percentage must be between 0% and 25%.");
 
         if (!Enum.IsDefined(typeof(InterestCalculationMethod), loan.CalculationMethod))
-            AddError(errors, "loan.calculationMethod", isAr ? "طريقة احتساب الفائدة غير صالحة (1 = Reducing, 2 = Flat)." : "Invalid interest calculation method (1 = Reducing, 2 = Flat).");
+            AddError(errors, "loan.calculationMethod", isAr ? "طريقة احتساب الفائدة غير صالحة (القيم المتاحة: Reducing, Flat أو 1, 2)." : "Invalid interest calculation method (Allowed values: Reducing, Flat or 1, 2).");
 
         if (!Enum.IsDefined(typeof(InterestRateType), loan.RateType))
-            AddError(errors, "loan.rateType", isAr ? "نوع الفائدة غير صالح (1 = Fixed, 2 = Variable)." : "Invalid interest rate type (1 = Fixed, 2 = Variable).");
+            AddError(errors, "loan.rateType", isAr ? "نوع الفائدة غير صالح (القيم المتاحة: Fixed, Variable أو 1, 2)." : "Invalid interest rate type (Allowed values: Fixed, Variable or 1, 2).");
 
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }
@@ -92,7 +92,7 @@ public static class LoanRequestValidator
             AddError(errors, "profile.age", isAr ? "العمر يجب أن يكون بين 18 و 85 سنة." : "Age must be between 18 and 85 years.");
 
         if (!Enum.IsDefined(typeof(IncomeStability), profile.Stability))
-            AddError(errors, "profile.stability", isAr ? "نوع استقرار الدخل غير صالح (1 = StableEmployed, 2 = Freelance, 3 = BusinessOwner)." : "Invalid income stability type (1 = StableEmployed, 2 = Freelance, 3 = BusinessOwner).");
+            AddError(errors, "profile.stability", isAr ? "نوع استقرار الدخل غير صالح (القيم المتاحة: StableEmployed, Freelance, BusinessOwner أو 1, 2, 3)." : "Invalid income stability type (Allowed values: StableEmployed, Freelance, BusinessOwner or 1, 2, 3).");
 
         return errors.ToDictionary(k => k.Key, v => v.Value.ToArray());
     }

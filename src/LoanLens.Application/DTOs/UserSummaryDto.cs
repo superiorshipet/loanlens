@@ -1,3 +1,5 @@
+using LoanLens.Domain.Enums;
+
 namespace LoanLens.Application.DTOs;
 
 public record UserSummaryDto(
@@ -7,5 +9,8 @@ public record UserSummaryDto(
     string Role,
     bool IsActive,
     DateTime CreatedAt,
-    int SavedScenariosCount
+    int SavedScenariosCount,
+    int? Age = null,
+    IncomeStability? Stability = null,
+    decimal? MonthlyIncome = null
 );
