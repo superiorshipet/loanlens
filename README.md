@@ -1,4 +1,4 @@
-# 🔍 LoanLens — Intelligent Financial Advisory & Loan Decisioning Engine
+# LoanLens — Intelligent Financial Advisory & Loan Decisioning Engine
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512bd4.svg?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120.svg?style=for-the-badge&logo=csharp)](https://learn.microsoft.com/en-us/dotnet/csharp/)
@@ -9,36 +9,9 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 **LoanLens** is a high-performance, enterprise-grade financial engineering and advisory engine tailored for the Egyptian retail banking and consumer finance ecosystem. It empowers consumers, loan officers, and fintech platforms to assess loan affordability, simulate economic shocks, run stochastic default simulations, and generate personalized advisory narratives powered by LLMs (Google Gemini & Groq).
-
 ---
 
-## 📑 Table of Contents
-
-- [Executive Overview](#-executive-overview)
-- [Architecture & Solution Design](#-architecture--solution-design)
-- [Core Mathematical & Financial Engines](#-core-mathematical--financial-engines)
-  - [1. Amortization & Effective APR Engine](#1-amortization--effective-apr-engine)
-  - [2. Regulatory Affordability & DTI Compliance](#2-regulatory-affordability--dti-compliance)
-  - [3. Health Insurance Multi-Engine Integration](#3-health-insurance-multi-engine-integration)
-  - [4. Deterministic Stress Testing (Crisis Simulation)](#4-deterministic-stress-testing-crisis-simulation)
-  - [5. Stochastic Monte Carlo Default Simulation](#5-stochastic-monte-carlo-default-simulation)
-  - [6. 0–100 Composite Risk Scoring & Decision Engine](#6-0100-composite-risk-scoring--decision-engine)
-  - [7. Borrowing Capacity & Retirement Ceiling Engine](#7-borrowing-capacity--retirement-ceiling-engine)
-  - [8. Debt Consolidation & Buyout Engine](#8-debt-consolidation--buyout-engine)
-  - [9. CBE Corridor Sensitivity Engine](#9-cbe-corridor-sensitivity-engine)
-  - [10. Live Egyptian Banking Market Rates & CBE Corridor](#10-live-egyptian-banking-market-rates--cbe-corridor)
-  - [11. AI Narrative Advisory Engine](#11-ai-narrative-advisory-engine)
-  - [12. Document & Spreadsheet Generation](#12-document--spreadsheet-generation)
-- [RESTful API Endpoints](#-restful-api-endpoints)
-- [Security & Production Hardening](#-security--production-hardening)
-- [Getting Started & Local Setup](#-getting-started--local-setup)
-- [Docker & Container Deployment](#-docker--container-deployment)
-- [Testing & Quality Assurance](#-testing--quality-assurance)
-- [CI/CD Pipeline](#-cicd-pipeline)
-
----
-
-## 🌟 Executive Overview
+## Executive Overview
 
 In volatile macroeconomic environments, conventional credit scoring fails to reflect real borrower resilience. LoanLens solves this by combining:
 1. **Egyptian Central Bank (CBE) Regulations:** Strict compliance with the 50% legal Debt-To-Income (DTI) ceiling and 30%–35% safe recommended thresholds.
@@ -51,7 +24,7 @@ In volatile macroeconomic environments, conventional credit scoring fails to ref
 
 ---
 
-## 🏛 Architecture & Solution Design
+## Architecture & Solution Design
 
 The solution strictly adheres to **Clean Architecture** and follows the **Single-Type-Per-File** convention across all layers. Business rules remain independent of UI, databases, and third-party frameworks.
 
@@ -92,7 +65,7 @@ LoanLens/
 
 ---
 
-## ⚙️ Core Mathematical & Financial Engines
+## Core Mathematical & Financial Engines
 
 ### 1. Amortization & Effective APR Engine
 - **Reducing Balance Method:** Computed via the standard financial annuity formula:
@@ -174,7 +147,7 @@ Calculates an objective risk score from 0 (ultra-safe) to 100 (critical default 
 
 ---
 
-## 📡 RESTful API Endpoints
+## RESTful API Endpoints
 
 All endpoints support both `/api/v1/...` and `/api/...`.
 
@@ -243,7 +216,7 @@ All endpoints support both `/api/v1/...` and `/api/...`.
 
 ---
 
-## 🔒 Security & Production Hardening
+## Security & Production Hardening
 
 - **Credential Isolation:** No plaintext API keys in configuration files. Secrets are managed via `.NET User Secrets` in development and Environment Variables in production.
 - **Built-in Rate Limiting:** Enforces `FixedWindowRateLimiter` (100 requests / minute) to prevent Denial-of-Service and LLM quota exhaustion.
@@ -253,7 +226,7 @@ All endpoints support both `/api/v1/...` and `/api/...`.
 
 ---
 
-## 🚀 Getting Started & Local Setup
+## Getting Started & Local Setup
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -294,7 +267,7 @@ The API automatically applies pending EF Core PostgreSQL migrations and seeds th
 
 ---
 
-## 🐳 Docker & Container Deployment
+## Docker & Container Deployment
 
 ### Run with Docker Compose:
 ```bash
@@ -307,7 +280,7 @@ This builds and orchestrates the complete production-ready stack:
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 The test suite contains **41 unit tests** verifying mathematical calculation precision, APR conversions, Monte Carlo convergence, CBE regulation caps, health insurance dynamics, JWT generation, password hashing, and Redis caching:
 
@@ -318,7 +291,7 @@ dotnet test tests/LoanLens.Domain.Tests
 
 ---
 
-## 🔄 CI/CD Pipeline
+## CI/CD Pipeline
 
 The project includes an automated GitHub Actions pipeline (`.github/workflows/ci.yml`) that executes on every push and pull request to `main` and `dev`:
 - Restores dependencies
@@ -327,5 +300,5 @@ The project includes an automated GitHub Actions pipeline (`.github/workflows/ci
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
