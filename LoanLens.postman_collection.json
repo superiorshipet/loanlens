@@ -20,9 +20,443 @@
       "key": "lang",
       "value": "en",
       "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
+    {
+      "name": "0. Authentication & Identity",
+      "item": [
+        {
+          "name": "1. Register New User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"borrower@loanlens.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Ahmed Hassan\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a new user and issues a JWT token."
+          }
+        },
+        {
+          "name": "2. Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"authToken\", data.token);",
+                  "    pm.collectionVariables.set(\"userId\", data.userId);",
+                  "    console.log(\"Saved Admin token:\", data.token.substring(0, 15) + \"...\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@loanlens.com\",\n  \"password\": \"Admin@123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in with the seeded System Administrator account and automatically updates {{authToken}}."
+          }
+        },
+        {
+          "name": "3. Login as User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"authToken\", data.token);",
+                  "    pm.collectionVariables.set(\"userId\", data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"borrower@loanlens.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in as a standard borrower user."
+          }
+        },
+        {
+          "name": "4. Get Current User Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Fetches profile, roles, and scenario count for currently authenticated token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Management & Dashboard",
+      "item": [
+        {
+          "name": "1. Platform Executive Dashboard (Full Metrics)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": "Returns full website metrics: total users, active/inactive counts, scenario volume, total principal simulated, average DTI, CBE rates, and recent activity."
+          }
+        },
+        {
+          "name": "2. List All Registered Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ]
+            },
+            "description": "Admin only: Lists all platform users with role, status, creation date, and scenario counts."
+          }
+        },
+        {
+          "name": "3. Get User Details & History by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Admin only: Gets full profile and saved scenario history for a specific user ID."
+          }
+        },
+        {
+          "name": "4. Update User Account (Role, Status, Info)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ahmed Hassan (Updated)\",\n  \"role\": \"Admin\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Admin only: Updates user name, email, role (promotes to Admin/demotes to User), active status, or resets password."
+          }
+        },
+        {
+          "name": "5. Delete User Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Admin only: Deletes a user account from PostgreSQL."
+          }
+        },
+        {
+          "name": "6. View All Saved Scenarios (System-wide)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scenarios?count=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scenarios"
+              ],
+              "query": [
+                {
+                  "key": "count",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Admin only: Lists all scenarios across all users in the system."
+          }
+        },
+        {
+          "name": "7. Delete Scenario (Admin Override)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scenarios/{{scenarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scenarios",
+                "{{scenarioId}}"
+              ]
+            },
+            "description": "Admin only: Deletes any scenario in the database by ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Egyptian Banking Market Rates",
+      "item": [
+        {
+          "name": "1. Get Live CBE Corridor & Benchmark Bank Rates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/market-rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market-rates"
+              ]
+            },
+            "description": "Public: Returns CBE Corridor (Lending, Deposit, Main Operation) and benchmark rates from top Egyptian banks (NBE, Banque Misr, CIB, QNB, AAIB). Cached in Redis."
+          }
+        },
+        {
+          "name": "2. Force Refresh Market Rates (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/market-rates/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market-rates",
+                "refresh"
+              ]
+            },
+            "description": "Admin only: Forces cache invalidation and re-computes market rate averages."
+          }
+        }
+      ]
+    },
     {
       "name": "1. Full 360 Advisor Analysis (All Engines)",
       "request": {
@@ -43,8 +477,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "full-analysis"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "full-analysis"
+          ],
           "query": [
             {
               "key": "lang",
@@ -75,8 +515,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/calculate?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "calculate"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "calculate"
+          ],
           "query": [
             {
               "key": "lang",
@@ -107,8 +553,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/affordability?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "affordability"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "affordability"
+          ],
           "query": [
             {
               "key": "lang",
@@ -139,8 +591,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/stress-test?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "stress-test"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "stress-test"
+          ],
           "query": [
             {
               "key": "lang",
@@ -171,8 +629,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/monte-carlo?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "monte-carlo"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "monte-carlo"
+          ],
           "query": [
             {
               "key": "lang",
@@ -203,8 +667,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/export-pdf?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "export-pdf"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "export-pdf"
+          ],
           "query": [
             {
               "key": "lang",
@@ -249,8 +719,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/save-scenario?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "save-scenario"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "save-scenario"
+          ],
           "query": [
             {
               "key": "lang",
@@ -268,8 +744,14 @@
         "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios?count=20",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios"
+          ],
           "query": [
             {
               "key": "count",
@@ -292,8 +774,15 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios", "{{scenarioId}}"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios",
+            "{{scenarioId}}"
+          ],
           "query": [
             {
               "key": "lang",
@@ -316,8 +805,16 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/pdf?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios", "{{scenarioId}}", "pdf"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios",
+            "{{scenarioId}}",
+            "pdf"
+          ],
           "query": [
             {
               "key": "lang",
@@ -340,8 +837,14 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/catalog?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "catalog"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "catalog"
+          ],
           "query": [
             {
               "key": "lang",
@@ -372,8 +875,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/compare?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "compare"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "compare"
+          ],
           "query": [
             {
               "key": "lang",
@@ -396,8 +905,15 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios/compare?id1={{scenarioId}}&id2={{scenarioId}}&lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios", "compare"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios",
+            "compare"
+          ],
           "query": [
             {
               "key": "id1",
@@ -436,8 +952,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/borrowing-capacity?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "borrowing-capacity"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "borrowing-capacity"
+          ],
           "query": [
             {
               "key": "lang",
@@ -468,8 +990,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/debt-consolidation?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "debt-consolidation"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "debt-consolidation"
+          ],
           "query": [
             {
               "key": "lang",
@@ -500,8 +1028,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/rate-sensitivity?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "rate-sensitivity"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "rate-sensitivity"
+          ],
           "query": [
             {
               "key": "lang",
@@ -532,8 +1066,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/export-excel?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "export-excel"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "export-excel"
+          ],
           "query": [
             {
               "key": "lang",
@@ -556,8 +1096,16 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/excel?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios", "{{scenarioId}}", "excel"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios",
+            "{{scenarioId}}",
+            "excel"
+          ],
           "query": [
             {
               "key": "lang",
@@ -588,8 +1136,14 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/loans/ai-advice?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "ai-advice"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "ai-advice"
+          ],
           "query": [
             {
               "key": "lang",
@@ -612,8 +1166,16 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/ai-advice?lang={{lang}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "loans", "scenarios", "{{scenarioId}}", "ai-advice"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "loans",
+            "scenarios",
+            "{{scenarioId}}",
+            "ai-advice"
+          ],
           "query": [
             {
               "key": "lang",
@@ -647,8 +1209,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "full-analysis"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -679,8 +1247,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "full-analysis"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -711,8 +1285,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "full-analysis"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -743,8 +1323,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "full-analysis"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -775,8 +1361,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "full-analysis"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -807,8 +1399,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/debt-consolidation?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "debt-consolidation"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "debt-consolidation"
+              ],
               "query": [
                 {
                   "key": "lang",
@@ -839,8 +1437,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/loans/rate-sensitivity?lang={{lang}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "loans", "rate-sensitivity"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "rate-sensitivity"
+              ],
               "query": [
                 {
                   "key": "lang",

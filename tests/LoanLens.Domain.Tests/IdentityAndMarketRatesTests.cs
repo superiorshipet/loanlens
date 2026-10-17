@@ -200,4 +200,75 @@ public class IdentityAndMarketRatesTests
         var afterRemoval = await cacheService.GetAsync<string>(key);
         Assert.Null(afterRemoval);
     }
+
+    [Fact]
+    public async Task AuthService_UpdateUser_ShouldModifyFieldsAndAllowRolePromotion()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var authService = new AuthService(dbContext, jwtGen);
+
+        var firstUser = await authService.RegisterAsync(new RegisterRequestDto("admin@loanlens.com", "Password@123", "First Admin"));
+        var secondUser = await authService.RegisterAsync(new RegisterRequestDto("user@loanlens.com", "Password@123", "Normal User"));
+        Assert.Equal("User", secondUser.Role);
+
+        // Act - Promote second user to Admin and update name
+        var updateRequest = new UpdateUserRequestDto("Promoted Admin", "newemail@loanlens.com", "Admin", false, "NewPassword@123");
+        var updated = await authService.UpdateUserAsync(secondUser.UserId, updateRequest);
+
+        // Assert
+        Assert.NotNull(updated);
+        Assert.Equal("Promoted Admin", updated.FullName);
+        Assert.Equal("newemail@loanlens.com", updated.Email);
+        Assert.Equal("Admin", updated.Role);
+        Assert.False(updated.IsActive);
+
+        // Act - Verify login with updated credentials
+        // Should fail because IsActive is false
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            authService.LoginAsync(new LoginRequestDto("newemail@loanlens.com", "NewPassword@123")));
+    }
+
+    [Fact]
+    public async Task AuthService_GetAdminDashboard_ShouldReturnAggregatedMetrics()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<LoanLensDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var dbContext = new LoanLensDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var jwtGen = new JwtTokenGenerator(_jwtOptions);
+        var authService = new AuthService(dbContext, jwtGen);
+
+        await authService.RegisterAsync(new RegisterRequestDto("admin@loanlens.com", "Password@123", "Admin"));
+        await authService.RegisterAsync(new RegisterRequestDto("borrower@loanlens.com", "Password@123", "Borrower"));
+
+        // Act
+        var dashboard = await authService.GetAdminDashboardAsync();
+
+        // Assert
+        Assert.NotNull(dashboard);
+        Assert.Equal(2, dashboard.UserStats.TotalUsers);
+        Assert.Equal(2, dashboard.UserStats.ActiveUsers);
+        Assert.Equal(1, dashboard.UserStats.AdminUsers);
+        Assert.Equal(1, dashboard.UserStats.StandardUsers);
+        Assert.Equal(2, dashboard.RecentUsers.Count);
+        Assert.Equal(28.25m, dashboard.MarketStats.CbeLendingRate);
+    }
 }

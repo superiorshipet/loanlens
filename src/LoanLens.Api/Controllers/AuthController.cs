@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
+[Route("api/v1/auth")]
 [Route("api/auth")]
 public class AuthController : ApiControllerBase
 {

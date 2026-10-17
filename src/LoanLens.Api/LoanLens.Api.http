@@ -142,22 +142,45 @@ GET {{Host}}/api/v1/auth/me
 Authorization: Bearer {{authToken}}
 Accept: application/json
 
-### 13. Admin: List All Registered Users
+### 13. Admin: Executive Dashboard (Full Website & Borrower Analytics)
+GET {{Host}}/api/v1/admin/dashboard
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 14. Admin: List All Registered Users (Supports ?search=&role=&isActive=)
 GET {{Host}}/api/v1/admin/users
 Authorization: Bearer {{authToken}}
 Accept: application/json
 
-### 14. Admin: List All Scenarios Across All Users
+### 15. Admin: Get User Details and Scenarios by ID
+@targetUserId = {{login.response.body.userId}}
+GET {{Host}}/api/v1/admin/users/{{targetUserId}}
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 16. Admin: Update User Account (Role Promotion, Status, Info)
+PUT {{Host}}/api/v1/admin/users/{{targetUserId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "System Administrator (Updated)",
+  "role": "Admin",
+  "isActive": true
+}
+
+### 17. Admin: List All Scenarios Across All Users
 GET {{Host}}/api/v1/admin/scenarios?count=50
 Authorization: Bearer {{authToken}}
 Accept: application/json
 
-### 15. Get Egyptian Banking Market Rates (CBE Corridor & Commercial Banks)
+### 18. Get Egyptian Banking Market Rates (CBE Corridor & Commercial Banks)
 GET {{Host}}/api/v1/market-rates
 Accept: application/json
 
-### 16. Admin: Force Refresh Market Rates Cache
+### 19. Admin: Force Refresh Market Rates Cache
 POST {{Host}}/api/v1/market-rates/refresh
 Authorization: Bearer {{authToken}}
 Accept: application/json
+
 
