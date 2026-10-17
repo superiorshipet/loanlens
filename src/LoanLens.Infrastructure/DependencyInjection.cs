@@ -43,6 +43,9 @@ public static class DependencyInjection
         services.Configure<Configuration.RedisOptions>(
             configuration.GetSection(Configuration.RedisOptions.SectionName));
 
+        services.Configure<Configuration.ScraperOptions>(
+            configuration.GetSection(Configuration.ScraperOptions.SectionName));
+
         services.AddMemoryCache();
 
         var redisOptions = configuration.GetSection(Configuration.RedisOptions.SectionName).Get<Configuration.RedisOptions>()
@@ -64,8 +67,10 @@ public static class DependencyInjection
         services.AddScoped<IScenarioRepository, ScenarioRepository>();
         services.AddScoped<IPdfReportService, LoanPdfReportService>();
         services.AddScoped<IExcelExportService, LoanExcelExportService>();
+        services.AddHttpClient<IBankRatesScraperService, BankRatesScraperService>();
         services.AddScoped<IBankRatesService, BankRatesService>();
         services.AddHttpClient<ILoanNarrativeAdvisor, LoanNarrativeAdvisorService>();
+        services.AddHostedService<BankRatesScraperBackgroundService>();
 
         return services;
     }

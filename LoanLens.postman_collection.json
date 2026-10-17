@@ -444,6 +444,34 @@
             },
             "description": "Admin only: Forces cache invalidation and re-computes market rate averages."
           }
+        },
+        {
+          "name": "3. Live Scrape Egyptian Bank Rates via AngleSharp (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/market-rates/scrape",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "market-rates",
+                "scrape"
+              ]
+            },
+            "description": "Admin only: Executes AngleSharp HTML5 web crawler across CBE official policy portals and Egyptian retail bank pages, parses live interest rates, updates Redis cache, and returns detailed scrape diagnostic metrics."
+          }
         }
       ]
     },

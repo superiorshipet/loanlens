@@ -153,7 +153,8 @@ public class IdentityAndMarketRatesTests
         // Arrange
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance, null);
-        var ratesService = new BankRatesService(cacheService, NullLogger<BankRatesService>.Instance);
+        var scraperService = new BankRatesScraperService(new HttpClient(), cacheService, Options.Create(new ScraperOptions()), NullLogger<BankRatesScraperService>.Instance);
+        var ratesService = new BankRatesService(cacheService, scraperService, NullLogger<BankRatesService>.Instance);
 
         // Act
         var result = await ratesService.GetMarketRatesAsync("en");
@@ -175,6 +176,28 @@ public class IdentityAndMarketRatesTests
         var cachedResult = await ratesService.GetMarketRatesAsync("en");
         Assert.NotNull(cachedResult);
         Assert.Equal(result.AsOfDate, cachedResult.AsOfDate);
+    }
+
+    [Fact]
+    public async Task BankRatesScraperService_ShouldScrapeAndPopulateMarketData()
+    {
+        // Arrange
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance, null);
+        var scraperService = new BankRatesScraperService(new HttpClient(), cacheService, Options.Create(new ScraperOptions()), NullLogger<BankRatesScraperService>.Instance);
+
+        // Act
+        var scrapeResult = await scraperService.ScrapeLatestRatesAsync();
+
+        // Assert
+        Assert.NotNull(scrapeResult);
+        Assert.True(scrapeResult.Success);
+        Assert.True(scrapeResult.RatesUpdatedCount > 0);
+        Assert.Equal(28.25m, scrapeResult.CbeLendingRate);
+        Assert.Equal(27.25m, scrapeResult.CbeDepositRate);
+        Assert.NotEmpty(scrapeResult.ExtractedRates);
+        Assert.NotEmpty(scrapeResult.SourcesChecked);
+        Assert.Contains("AngleSharp", scrapeResult.ScraperEngine);
     }
 
     [Fact]
