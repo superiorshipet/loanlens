@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/market-rates")]
 [Route("api/market-rates")]
 public class MarketRatesController : ApiControllerBase
 {

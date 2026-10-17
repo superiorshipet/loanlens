@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/admin")]
 [Route("api/admin")]
 [Authorize(Roles = "Admin")]
 public class AdminController : ApiControllerBase

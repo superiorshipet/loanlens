@@ -52,13 +52,12 @@
               "raw": "{\n  \"email\": \"borrower@loanlens.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Ahmed Hassan\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "raw": "{{baseUrl}}/api/auth/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "auth",
                 "register"
               ]
@@ -97,13 +96,12 @@
               "raw": "{\n  \"email\": \"admin@loanlens.com\",\n  \"password\": \"Admin@123456\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "auth",
                 "login"
               ]
@@ -141,13 +139,12 @@
               "raw": "{\n  \"email\": \"borrower@loanlens.com\",\n  \"password\": \"Password@123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "auth",
                 "login"
               ]
@@ -170,13 +167,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "raw": "{{baseUrl}}/api/auth/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "auth",
                 "me"
               ]
@@ -205,13 +201,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+              "raw": "{{baseUrl}}/api/admin/dashboard",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "dashboard"
               ]
@@ -234,13 +229,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "raw": "{{baseUrl}}/api/admin/users",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "users"
               ]
@@ -263,13 +257,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "users",
                 "{{userId}}"
@@ -297,13 +290,12 @@
               "raw": "{\n  \"fullName\": \"Ahmed Hassan (Updated)\",\n  \"role\": \"Admin\",\n  \"isActive\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "users",
                 "{{userId}}"
@@ -323,13 +315,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}",
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "users",
                 "{{userId}}"
@@ -353,13 +344,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/scenarios?count=50",
+              "raw": "{{baseUrl}}/api/admin/scenarios?count=50",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "scenarios"
               ],
@@ -384,13 +374,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/admin/scenarios/{{scenarioId}}",
+              "raw": "{{baseUrl}}/api/admin/scenarios/{{scenarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "admin",
                 "scenarios",
                 "{{scenarioId}}"
@@ -416,13 +405,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/market-rates",
+              "raw": "{{baseUrl}}/api/market-rates",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "market-rates"
               ]
             },
@@ -444,13 +432,12 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/market-rates/refresh",
+              "raw": "{{baseUrl}}/api/market-rates/refresh",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "v1",
                 "market-rates",
                 "refresh"
               ]
