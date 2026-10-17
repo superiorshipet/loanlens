@@ -1,4 +1,4 @@
-# 🔍 LoanLens — Intelligent Financial Advisory & Loan Decisioning Engine
+# LoanLens — Intelligent Financial Advisory & Loan Decisioning Engine
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512bd4.svg?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120.svg?style=for-the-badge&logo=csharp)](https://learn.microsoft.com/en-us/dotnet/csharp/)
@@ -12,7 +12,7 @@
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Executive Overview](#-executive-overview)
 - [Architecture & Solution Design](#-architecture--solution-design)
@@ -38,7 +38,7 @@
 
 ---
 
-## 🌟 Executive Overview
+## Executive Overview
 
 In volatile macroeconomic environments, conventional credit scoring fails to reflect real borrower resilience. LoanLens solves this by combining:
 1. **Egyptian Central Bank (CBE) Regulations:** Strict compliance with the 50% legal Debt-To-Income (DTI) ceiling and 30%–35% safe recommended thresholds.
@@ -51,7 +51,7 @@ In volatile macroeconomic environments, conventional credit scoring fails to ref
 
 ---
 
-## 🏛 Architecture & Solution Design
+## Architecture & Solution Design
 
 The solution strictly adheres to **Clean Architecture** and follows the **Single-Type-Per-File** convention across all layers. Business rules remain independent of UI, databases, and third-party frameworks.
 
@@ -92,7 +92,7 @@ LoanLens/
 
 ---
 
-## ⚙️ Core Mathematical & Financial Engines
+## Core Mathematical & Financial Engines
 
 ### 1. Amortization & Effective APR Engine
 - **Reducing Balance Method:** Computed via the standard financial annuity formula:
@@ -174,7 +174,7 @@ Calculates an objective risk score from 0 (ultra-safe) to 100 (critical default 
 
 ---
 
-## 📡 RESTful API Endpoints
+## RESTful API Endpoints
 
 All endpoints support both `/api/v1/...` and `/api/...`.
 
@@ -253,7 +253,7 @@ All endpoints support both `/api/v1/...` and `/api/...`.
 
 ---
 
-## 🚀 Getting Started & Local Setup
+## Getting Started & Local Setup
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -294,7 +294,7 @@ The API automatically applies pending EF Core PostgreSQL migrations and seeds th
 
 ---
 
-## 🐳 Docker & Container Deployment
+## Docker & Container Deployment
 
 ### Run with Docker Compose:
 ```bash
@@ -307,7 +307,7 @@ This builds and orchestrates the complete production-ready stack:
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 The test suite contains **41 unit tests** verifying mathematical calculation precision, APR conversions, Monte Carlo convergence, CBE regulation caps, health insurance dynamics, JWT generation, password hashing, and Redis caching:
 
@@ -318,7 +318,7 @@ dotnet test tests/LoanLens.Domain.Tests
 
 ---
 
-## 🔄 CI/CD Pipeline
+## CI/CD Pipeline
 
 The project includes an automated GitHub Actions pipeline (`.github/workflows/ci.yml`) that executes on every push and pull request to `main` and `dev`:
 - Restores dependencies
