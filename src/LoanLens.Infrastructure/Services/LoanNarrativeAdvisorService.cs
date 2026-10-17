@@ -17,15 +17,18 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
 {
     private readonly HttpClient _httpClient;
     private readonly AiAdvisorOptions _options;
+    private readonly IBankRatesService _bankRatesService;
     private readonly ILogger<LoanNarrativeAdvisorService> _logger;
 
     public LoanNarrativeAdvisorService(
         HttpClient httpClient,
         IOptions<AiAdvisorOptions> options,
+        IBankRatesService bankRatesService,
         ILogger<LoanNarrativeAdvisorService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? new AiAdvisorOptions();
+        _bankRatesService = bankRatesService ?? throw new ArgumentNullException(nameof(bankRatesService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -41,6 +44,17 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         var isAr = LoanLensLanguage.IsArabic(language)
                 || LoanLensLanguage.ContainsArabic(customQuestion)
                 || LoanLensLanguage.ContainsArabic(customerName);
+
+        BankRatesSummaryDto? marketRates = null;
+        try
+        {
+            marketRates = await _bankRatesService.GetMarketRatesAsync(isAr ? "ar" : "en", cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load live market benchmark for AI advisor. Proceeding with baseline.");
+        }
+
         var geminiKey = ResolveGeminiKey();
         var groqKey = ResolveGroqKey();
 
@@ -49,7 +63,7 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         {
             try
             {
-                var advice = await CallGeminiAsync(report, geminiKey, customerName, customQuestion, isAr, cancellationToken);
+                var advice = await CallGeminiAsync(report, geminiKey, customerName, customQuestion, isAr, marketRates, cancellationToken);
                 if (advice != null)
                 {
                     _logger.LogInformation("Successfully generated narrative advice using Gemini ({Model}).", advice.ModelUsed);
@@ -67,7 +81,7 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         {
             try
             {
-                var advice = await CallGroqAsync(report, groqKey, customerName, customQuestion, isAr, cancellationToken);
+                var advice = await CallGroqAsync(report, groqKey, customerName, customQuestion, isAr, marketRates, cancellationToken);
                 if (advice != null)
                 {
                     _logger.LogInformation("Successfully generated narrative advice using Groq ({Model}).", advice.ModelUsed);
@@ -81,8 +95,8 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         }
 
         // 3. Fallback to high-precision deterministic rule-based engine
-        _logger.LogInformation("Generating narrative advice via high-precision rule-based engine.");
-        return GenerateRuleBasedAdvice(report, customerName, customQuestion, isAr);
+        _logger.LogInformation("Generating narrative advice via high-precision rule-based engine with live market benchmark.");
+        return GenerateRuleBasedAdvice(report, customerName, customQuestion, isAr, marketRates);
     }
 
     private string? ResolveGeminiKey()
@@ -113,12 +127,13 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         string? customerName,
         string? customQuestion,
         bool isAr,
+        BankRatesSummaryDto? marketRates,
         CancellationToken ct)
     {
-        var model = string.IsNullOrWhiteSpace(_options.GeminiModelId) ? "gemini-3.5-flash" : _options.GeminiModelId;
+        var model = string.IsNullOrWhiteSpace(_options.GeminiModelId) ? "gemini-2.5-flash" : _options.GeminiModelId;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
-        var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr);
+        var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr, marketRates);
 
         var payload = new
         {
@@ -181,12 +196,13 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         string? customerName,
         string? customQuestion,
         bool isAr,
+        BankRatesSummaryDto? marketRates,
         CancellationToken ct)
     {
         var model = string.IsNullOrWhiteSpace(_options.GroqModelId) ? "openai/gpt-oss-120b" : _options.GroqModelId;
         var url = "https://api.groq.com/openai/v1/chat/completions";
 
-        var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr);
+        var (systemPrompt, userPrompt) = BuildPrompts(report, customerName, customQuestion, isAr, marketRates);
 
         var payload = new
         {
@@ -236,7 +252,8 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         ComprehensiveLoanReportDto report,
         string? customerName,
         string? customQuestion,
-        bool isAr)
+        bool isAr,
+        BankRatesSummaryDto? marketRates)
     {
         string systemPrompt;
         var clientLabel = !string.IsNullOrWhiteSpace(customerName) ? customerName : (isAr ? "العميل" : "Valued Client");
@@ -315,6 +332,17 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
             sb.AppendLine($"درجة الخطر: {report.RiskEvaluation.TotalRiskScore}/100 ({report.RiskEvaluation.RiskLabel})");
             sb.AppendLine($"قرار النظام الحسابي: {report.Recommendation.VerdictHeadline}");
             sb.AppendLine($"التعليل المالي الأساسي: {report.Recommendation.DetailedReasoning}");
+
+            if (marketRates != null)
+            {
+                sb.AppendLine("\n--- مؤشرات البنك المركزي المصري وأسعار السوق المصرفي المباشرة ---");
+                sb.AppendLine($"سعر الإقراض لليلة واحدة بالمركزي المصري (سقف الكوريدور): {marketRates.CbeLendingRate}%");
+                sb.AppendLine($"سعر الإيداع لليلة واحدة (قاع الكوريدور): {marketRates.CbeDepositRate}%");
+                sb.AppendLine($"سعر العملية الرئيسية للبنك المركزي: {marketRates.CbeMainOperationRate}%");
+                sb.AppendLine($"متوسط فائدة القروض الشخصية بالسوق المصري: {marketRates.AveragePersonalLoanRate}%");
+                sb.AppendLine($"متوسط فائدة قروض السيارات: {marketRates.AverageAutoLoanRate}%");
+                sb.AppendLine($"متوسط فائدة التمويل العقاري: {marketRates.AverageMortgageRate}%");
+            }
         }
         else
         {
@@ -402,6 +430,17 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
             if (bestAlt != null)
             {
                 sb.AppendLine($"Market Alternative Offer: {bestAlt.Product.ProviderName} ({bestAlt.Product.ProductName}) at {bestAlt.Product.AnnualInterestRatePercentage}% - Saves {bestAlt.CostDifferenceComparedToCurrent:N0} EGP total cost");
+            }
+
+            if (marketRates != null)
+            {
+                sb.AppendLine("\n--- LIVE CENTRAL BANK OF EGYPT (CBE) & MARKET BENCHMARKS ---");
+                sb.AppendLine($"CBE Overnight Lending Corridor: {marketRates.CbeLendingRate}%");
+                sb.AppendLine($"CBE Overnight Deposit Corridor: {marketRates.CbeDepositRate}%");
+                sb.AppendLine($"CBE Main Operation Rate: {marketRates.CbeMainOperationRate}%");
+                sb.AppendLine($"Market Average Personal Loan Rate: {marketRates.AveragePersonalLoanRate}%");
+                sb.AppendLine($"Market Average Auto Loan Rate: {marketRates.AverageAutoLoanRate}%");
+                sb.AppendLine($"Market Average Mortgage Rate: {marketRates.AverageMortgageRate}%");
             }
         }
 
@@ -547,7 +586,8 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
         ComprehensiveLoanReportDto report,
         string? customerName,
         string? customQuestion,
-        bool isAr)
+        bool isAr,
+        BankRatesSummaryDto? marketRates = null)
     {
         var clientName = !string.IsNullOrWhiteSpace(customerName) ? customerName : (isAr ? "العميل" : "Valued Client");
         var dti = report.Affordability.DtiPercentage;
@@ -636,6 +676,11 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
                 marketInsight = "نصيحة مصرفية: يتيح البنك المركزي المصري سداد القروض معجلاً برسوم سداد معجل لا تتجاوز عادة 3-5% من الرصيد المتبقي. استغلال المكافآت السنوية أو أي فائض دخل في السداد الجزئي المعجل يوفر عليك أضعاف غرامة السداد كفوائد مهدرة.";
             }
 
+            if (marketRates != null)
+            {
+                marketInsight += $" مع العلم أن سعر الإقراض لليلة واحدة بالبنك المركزي حالياً هو {marketRates.CbeLendingRate}% ومتوسط فائدة القروض الشخصية بالسوق المصري {marketRates.AveragePersonalLoanRate}%.";
+            }
+
             disclaimer = "إخلاء مسؤولية: هذا التقرير هو استشارة استرشادية مبنية على نماذج محاكاة مالية وافتراضات إحصائية لدعم اتخاذ القرار، ولا يُعد وثيقة موافقة بنكية ملزمة أو استشارة استثمارية تخضع لأحكام القانون المالي.";
         }
         else
@@ -705,6 +750,11 @@ public class LoanNarrativeAdvisorService : ILoanNarrativeAdvisor
             else
             {
                 marketInsight = "Egyptian Market Tip: CBE regulations cap early loan settlement fees at 3-5% of remaining principal. Directing annual corporate bonuses or surplus cash toward early principal repayments generates substantial net interest savings.";
+            }
+
+            if (marketRates != null)
+            {
+                marketInsight += $" Note that the current CBE Overnight Lending Corridor is {marketRates.CbeLendingRate}% and average market personal loan rate is {marketRates.AveragePersonalLoanRate}%.";
             }
 
             disclaimer = "Disclaimer: This advisory report is based on deterministic financial simulation models for educational and decision-support purposes. It does not constitute a legally binding banking approval or formal credit commitment.";

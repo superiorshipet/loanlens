@@ -50,10 +50,16 @@ public class AiNarrativeAdvisorTests
             _sensitivity
         );
 
+        var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var cacheService = new RedisCacheService(memoryCache, NullLogger<RedisCacheService>.Instance, null);
+        var scraperService = new BankRatesScraperService(new HttpClient(), cacheService, Options.Create(new ScraperOptions()), NullLogger<BankRatesScraperService>.Instance);
+        var bankRatesService = new BankRatesService(cacheService, scraperService, NullLogger<BankRatesService>.Instance);
+
         var options = Options.Create(new AiAdvisorOptions());
         _aiNarrativeService = new LoanNarrativeAdvisorService(
             new HttpClient(),
             options,
+            bankRatesService,
             NullLogger<LoanNarrativeAdvisorService>.Instance
         );
 

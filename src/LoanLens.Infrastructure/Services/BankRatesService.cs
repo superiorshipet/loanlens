@@ -8,12 +8,17 @@ public class BankRatesService : IBankRatesService
 {
     private const string CacheKey = "market:egyptian-bank-rates";
     private readonly ICacheService _cacheService;
+    private readonly IBankRatesScraperService _scraperService;
     private readonly ILogger<BankRatesService> _logger;
 
-    public BankRatesService(ICacheService cacheService, ILogger<BankRatesService> logger)
+    public BankRatesService(
+        ICacheService cacheService,
+        IBankRatesScraperService scraperService,
+        ILogger<BankRatesService> logger)
     {
-        _cacheService = cacheService;
-        _logger = logger;
+        _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+        _scraperService = scraperService ?? throw new ArgumentNullException(nameof(scraperService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<BankRatesSummaryDto> GetMarketRatesAsync(string language = "en", CancellationToken ct = default)
@@ -29,7 +34,21 @@ public class BankRatesService : IBankRatesService
 
     public async Task<BankRatesSummaryDto> RefreshMarketRatesAsync(CancellationToken ct = default)
     {
-        _logger.LogInformation("Refreshing Egyptian banking benchmark rates and CBE corridor data.");
+        _logger.LogInformation("Refreshing Egyptian banking benchmark rates via scraper engine.");
+
+        try
+        {
+            await _scraperService.ScrapeLatestRatesAsync(ct);
+            var freshCached = await _cacheService.GetAsync<BankRatesSummaryDto>(CacheKey, ct);
+            if (freshCached != null)
+            {
+                return freshCached;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Live scraper execution failed. Falling back to resilient Egyptian benchmark rates.");
+        }
 
         var rates = BuildEgyptianBankRates();
         var asOf = DateTime.UtcNow;

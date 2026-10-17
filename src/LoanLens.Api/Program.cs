@@ -108,6 +108,30 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 // 10. Pipeline Middlewares
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (!string.IsNullOrEmpty(path))
+    {
+        if (path.StartsWith("/api/v1/", StringComparison.OrdinalIgnoreCase))
+        {
+            path = "/api/" + path["/api/v1/".Length..];
+        }
+
+        if (path.Contains("//"))
+        {
+            while (path.Contains("//"))
+            {
+                path = path.Replace("//", "/");
+            }
+        }
+
+        context.Request.Path = path;
+    }
+    await next();
+});
+
+app.UseRouting();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseCors();

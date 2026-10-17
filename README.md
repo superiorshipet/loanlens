@@ -188,7 +188,10 @@ All endpoints support both `/api/v1/...` and `/api/...`.
 ### 2. Administrator Operations
 | Method | Endpoint | Access | Description |
 |:---|:---|:---|:---|
-| `GET`  | `/api/v1/admin/users` | Admin Only | Lists all registered platform users with scenario counts and creation dates. |
+| `GET`  | `/api/v1/admin/dashboard` | Admin Only | Executive dashboard with platform analytics, active users, scenario volume, and CBE rates. |
+| `GET`  | `/api/v1/admin/users` | Admin Only | Lists all registered users (supports `?search=&role=&isActive=`). |
+| `GET`  | `/api/v1/admin/users/{id}` | Admin Only | Retrieves complete profile and scenario history for a specific user ID. |
+| `PUT`  | `/api/v1/admin/users/{id}` | Admin Only | Updates user details, modifies roles (Admin/User), activates/deactivates, or resets passwords. |
 | `DELETE`| `/api/v1/admin/users/{id}` | Admin Only | Deactivates or removes a user account and associated records. |
 | `GET`  | `/api/v1/admin/scenarios` | Admin Only | Retrieves all financial scenarios created across all users in the system. |
 | `DELETE`| `/api/v1/admin/scenarios/{id}` | Admin Only | Deletes any scenario across the system. |

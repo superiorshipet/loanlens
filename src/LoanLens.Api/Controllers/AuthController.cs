@@ -69,4 +69,30 @@ public class AuthController : ApiControllerBase
 
         return Ok(profile);
     }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PasswordResetResponseDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, [FromQuery] string? lang, CancellationToken ct)
+    {
+        var language = ResolveLanguage(lang);
+        var result = await _authService.RequestPasswordResetAsync(request, language, ct);
+        return Ok(result);
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PasswordResetResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, [FromQuery] string? lang, CancellationToken ct)
+    {
+        var language = ResolveLanguage(lang);
+        var result = await _authService.ResetPasswordAsync(request, language, ct);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 }

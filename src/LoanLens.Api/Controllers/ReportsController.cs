@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoanLens.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/loans")]
 [Route("api/loans")]
 public class ReportsController : ApiControllerBase
 {

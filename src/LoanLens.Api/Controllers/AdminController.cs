@@ -19,12 +19,56 @@ public class AdminController : ApiControllerBase
         _scenarioRepo = scenarioRepo;
     }
 
+    [HttpGet("dashboard")]
+    [ProducesResponseType(typeof(AdminDashboardDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDashboard(CancellationToken ct)
+    {
+        var dashboard = await _authService.GetAdminDashboardAsync(ct);
+        return Ok(dashboard);
+    }
+
     [HttpGet("users")]
     [ProducesResponseType(typeof(IReadOnlyList<UserSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllUsers(CancellationToken ct)
+    public async Task<IActionResult> GetAllUsers(
+        [FromQuery] string? search,
+        [FromQuery] string? role,
+        [FromQuery] bool? isActive,
+        CancellationToken ct)
     {
-        var users = await _authService.GetAllUsersAsync(ct);
+        var users = await _authService.GetAllUsersAsync(search, role, isActive, ct);
         return Ok(users);
+    }
+
+    [HttpGet("users/{id:guid}")]
+    [ProducesResponseType(typeof(UserDetailsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserById(Guid id, CancellationToken ct)
+    {
+        var user = await _authService.GetUserByIdAsync(id, ct);
+        if (user is null)
+            return NotFound(new { message = $"User with ID {id} was not found." });
+
+        return Ok(user);
+    }
+
+    [HttpPut("users/{id:guid}")]
+    [ProducesResponseType(typeof(UserSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequestDto request, CancellationToken ct)
+    {
+        try
+        {
+            var updated = await _authService.UpdateUserAsync(id, request, ct);
+            if (updated is null)
+                return NotFound(new { message = $"User with ID {id} was not found." });
+
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("users/{id:guid}")]
