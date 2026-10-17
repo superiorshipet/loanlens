@@ -34,10 +34,11 @@
   ],
   "item": [
     {
-      "name": "0. Authentication & Identity",
+      "name": "1. Authentication & Users",
+      "description": "User registration, authentication, JWT tokens, and user profile management.",
       "item": [
         {
-          "name": "1. Register New User",
+          "name": "1. Register New Borrower",
           "request": {
             "method": "POST",
             "header": [
@@ -151,7 +152,7 @@
                 "login"
               ]
             },
-            "description": "Logs in as a standard borrower user."
+            "description": "Logs in as a standard borrower user and saves token to {{authToken}}."
           }
         },
         {
@@ -186,7 +187,8 @@
       ]
     },
     {
-      "name": "Admin Management & Dashboard",
+      "name": "2. Admin Management & Dashboard",
+      "description": "Executive dashboard metrics, user account management, and system-wide scenario administration.",
       "item": [
         {
           "name": "1. Platform Executive Dashboard (Full Metrics)",
@@ -400,7 +402,8 @@
       ]
     },
     {
-      "name": "Egyptian Banking Market Rates",
+      "name": "3. Egyptian Banking Market Rates",
+      "description": "Live and benchmark Egyptian banking market rates, CBE corridor rates, and admin refresh.",
       "item": [
         {
           "name": "1. Get Live CBE Corridor & Benchmark Bank Rates",
@@ -423,7 +426,7 @@
                 "market-rates"
               ]
             },
-            "description": "Public: Returns CBE Corridor (Lending, Deposit, Main Operation) and benchmark rates from top Egyptian banks (NBE, Banque Misr, CIB, QNB, AAIB). Cached in Redis."
+            "description": "Public: Returns CBE Corridor (Lending 28.25%, Deposit 27.25%, Main Operation 27.75%) and benchmark rates from top Egyptian banks (NBE, Banque Misr, CIB, QNB, AAIB). Cached in Redis."
           }
         },
         {
@@ -458,736 +461,755 @@
       ]
     },
     {
-      "name": "1. Full 360 Advisor Analysis (All Engines)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Ahmed Mahmoud\",\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000,\n  \"monteCarloOptions\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 15.0,\n    \"customEmergencyAnnualProbability\": 10.0,\n    \"customEmergencyCost\": 25000\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "full-analysis"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Executes full pipeline: Amortization Schedule, Affordability (DTI), 7 Stress Shocks, 5000-path Monte Carlo, 0-100 Risk Score, Strategy Options, and Market Catalog Comparison. Returns English by default or Arabic when lang=ar."
-      }
-    },
-    {
-      "name": "2. Calculate Amortization Schedule & APR",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"principal\": 100000,\n  \"tenorMonths\": 24,\n  \"annualInterestRatePercentage\": 12.0,\n  \"calculationMethod\": 2,\n  \"rateType\": 1,\n  \"adminFeePercentage\": 2.0\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/calculate?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "calculate"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Calculates monthly installment and schedule. Converts Flat rate (12%) to Effective APR (e.g. ~21.5%)."
-      }
-    },
-    {
-      "name": "3. Analyze Affordability (DTI & Runway)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 15000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 6000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 20000,\n    \"dependentsCount\": 2,\n    \"age\": 35,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 80000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/affordability?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "affordability"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Evaluates DTI ratio against CBE 50% threshold, disposable cash flow, and emergency runway months."
-      }
-    },
-    {
-      "name": "4. Run Stress Testing Shocks",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 20000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 8000,\n    \"currentMonthlyInstallments\": 1000,\n    \"savings\": 30000,\n    \"dependentsCount\": 1,\n    \"age\": 28,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 120000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 2,\n    \"adminFeePercentage\": 2.0\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/stress-test?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "stress-test"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Simulates 7 deterministic crisis scenarios: Medical emergency, 1/3/6 months job interruption, 25% income loss, inflation/rate hike, and combined crisis."
-      }
-    },
-    {
-      "name": "5. Run Monte Carlo Simulation",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 22000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 40000,\n    \"dependentsCount\": 1,\n    \"age\": 31,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 1000\n  },\n  \"loan\": {\n    \"principal\": 90000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"iterations\": 5000,\n  \"options\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 18.0,\n    \"customEmergencyAnnualProbability\": 12.0,\n    \"customEmergencyCost\": 20000\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/monte-carlo?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "monte-carlo"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Runs 5,000 stochastic life simulations with Gaussian income volatility and Poisson emergency events. Supports tunable custom volatility, shock probability, and emergency cost."
-      }
-    },
-    {
-      "name": "6. Export Comprehensive PDF Report",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Kareem Adel\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/export-pdf?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "export-pdf"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Generates and streams a professional PDF financial report (English by default, or Arabic if lang=ar)."
-      }
-    },
-    {
-      "name": "7. Save Scenario to SQLite Database",
-      "event": [
+      "name": "4. Core Financial Engines & Calculator",
+      "description": "Pure calculation engines: amortization, affordability (DTI), stress testing, Monte Carlo, and capacity.",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "var jsonData = pm.response.json();",
-              "if (jsonData && jsonData.id) {",
-              "    pm.collectionVariables.set('scenarioId', jsonData.id);",
-              "}"
-            ]
+          "name": "1. Full 360 Advisor Analysis (All Engines)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Ahmed Mahmoud\",\n  \"profile\": {\n    \"monthlyIncome\": 25000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 50000,\n    \"dependentsCount\": 1,\n    \"age\": 32,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  },\n  \"loan\": {\n    \"principal\": 100000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000,\n  \"monteCarloOptions\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 15.0,\n    \"customEmergencyAnnualProbability\": 10.0,\n    \"customEmergencyCost\": 25000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/full-analysis?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "full-analysis"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Executes full pipeline: Amortization Schedule, Affordability (DTI), 7 Stress Shocks, 5000-path Monte Carlo, 0-100 Risk Score, Strategy Options, and Market Catalog Comparison. Returns English by default or Arabic when lang=ar."
+          }
+        },
+        {
+          "name": "2. Calculate Amortization Schedule & APR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"principal\": 100000,\n  \"tenorMonths\": 24,\n  \"annualInterestRatePercentage\": 12.0,\n  \"calculationMethod\": 2,\n  \"rateType\": 1,\n  \"adminFeePercentage\": 2.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/calculate?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "calculate"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Calculates monthly installment and schedule. Converts Flat rate (12%) to Effective APR (e.g. ~21.5%)."
+          }
+        },
+        {
+          "name": "3. Analyze Affordability (DTI & Runway)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 15000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 6000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 20000,\n    \"dependentsCount\": 2,\n    \"age\": 35,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 80000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/affordability?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "affordability"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Evaluates DTI ratio against CBE 50% threshold, disposable cash flow, and emergency runway months."
+          }
+        },
+        {
+          "name": "4. Run Stress Testing Shocks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 20000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 8000,\n    \"currentMonthlyInstallments\": 1000,\n    \"savings\": 30000,\n    \"dependentsCount\": 1,\n    \"age\": 28,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 120000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 22.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 2,\n    \"adminFeePercentage\": 2.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/stress-test?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "stress-test"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Simulates 7 deterministic crisis scenarios: Medical emergency, 1/3/6 months job interruption, 25% income loss, inflation/rate hike, and combined crisis."
+          }
+        },
+        {
+          "name": "5. Run Monte Carlo Simulation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile\": {\n    \"monthlyIncome\": 22000,\n    \"stability\": 2,\n    \"fixedMonthlyExpenses\": 9000,\n    \"currentMonthlyInstallments\": 1500,\n    \"savings\": 40000,\n    \"dependentsCount\": 1,\n    \"age\": 31,\n    \"hasHealthInsurance\": false,\n    \"secondaryIncome\": 1000\n  },\n  \"loan\": {\n    \"principal\": 90000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"iterations\": 5000,\n  \"options\": {\n    \"iterations\": 5000,\n    \"customIncomeVolatilityPercentage\": 18.0,\n    \"customEmergencyAnnualProbability\": 12.0,\n    \"customEmergencyCost\": 20000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/monte-carlo?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "monte-carlo"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Runs 5,000 stochastic life simulations with Gaussian income volatility and Poisson emergency events. Supports tunable custom volatility, shock probability, and emergency cost."
+          }
+        },
+        {
+          "name": "11. Get Egyptian Loan Products Catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/catalog?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "catalog"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Retrieves catalog of commercial bank loans and consumer finance products in English (default) or Arabic (lang=ar)."
+          }
+        },
+        {
+          "name": "14. Calculate Borrowing Capacity & Affordability Ceiling",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"{{lang}}\",\n  \"targetInterestRatePercentage\": 21.5,\n  \"targetTenorMonths\": 60,\n  \"calculationMethod\": 1,\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 12000,\n    \"currentMonthlyInstallments\": 3500,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/borrowing-capacity?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "borrowing-capacity"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Calculates maximum loan amount and installment under Egyptian Central Bank (CBE) 50% legal limit vs 35% safe recommended ceiling. Factors in borrower retirement age and existing debt obligations."
+          }
+        },
+        {
+          "name": "15. Simulate Debt Buyout & Multi-Loan Consolidation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"{{lang}}\",\n  \"profile\": {\n    \"monthlyIncome\": 40000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 14000,\n    \"currentMonthlyInstallments\": 16500,\n    \"savings\": 30000,\n    \"dependentsCount\": 1,\n    \"age\": 35,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"existingDebts\": [\n    {\n      \"debtName\": \"Credit Card A (Overdue / Minimum Due)\",\n      \"remainingPrincipal\": 75000,\n      \"monthlyInstallment\": 6000,\n      \"remainingMonths\": 24,\n      \"earlySettlementFeePercentage\": 0.0\n    },\n    {\n      \"debtName\": \"Personal Loan Bank X\",\n      \"remainingPrincipal\": 120000,\n      \"monthlyInstallment\": 7500,\n      \"remainingMonths\": 24,\n      \"earlySettlementFeePercentage\": 3.0\n    },\n    {\n      \"debtName\": \"Consumer Finance (ValU / aman)\",\n      \"remainingPrincipal\": 35000,\n      \"monthlyInstallment\": 3000,\n      \"remainingMonths\": 14,\n      \"earlySettlementFeePercentage\": 5.0\n    }\n  ],\n  \"targetOffer\": {\n    \"providerName\": \"National Bank of Egypt (NBE Debt Buyout Program)\",\n    \"annualInterestRatePercentage\": 21.0,\n    \"tenorMonths\": 60,\n    \"adminFeePercentage\": 1.0,\n    \"calculationMethod\": 1\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/debt-consolidation?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "debt-consolidation"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Simulates consolidation of multiple scattered high-interest debts into one unified bank buyout loan. Accounts for early settlement fees and computes monthly cash flow freed up."
+          }
+        },
+        {
+          "name": "16. Variable Rate & CBE Corridor Sensitivity Simulation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"{{lang}}\",\n  \"loan\": {\n    \"principal\": 300000,\n    \"tenorMonths\": 60,\n    \"annualInterestRatePercentage\": 22.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 2,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/rate-sensitivity?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "rate-sensitivity"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Evaluates variable-rate loan sensitivity across CBE Corridor rate adjustments (+100 bps, +200 bps, +300 bps, -100 bps, -200 bps) and displays payment deltas and impact severity."
+          }
+        },
+        {
+          "name": "12. Compare Two Scenarios Side-by-Side",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenarioAName\": \"Banque Misr (36 Months @ 22.5%)\",\n  \"scenarioBName\": \"NBE (24 Months @ 21.5%)\",\n  \"language\": \"{{lang}}\",\n  \"scenarioA\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 22.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  },\n  \"scenarioB\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 24,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/compare?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "compare"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Compares two arbitrary loan offers side-by-side, detailing differences in Monthly Installment, Total Interest Paid, Effective APR, DTI, Default Probability, Risk Score, and crowning the winning scenario with advisor rationale."
           }
         }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Marwan Tarek\",\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 14000,\n    \"currentMonthlyInstallments\": 3000,\n    \"savings\": 80000,\n    \"dependentsCount\": 1,\n    \"age\": 36,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 5000\n  },\n  \"loan\": {\n    \"principal\": 200000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.0\n  },\n  \"monteCarloIterations\": 5000\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/save-scenario?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "save-scenario"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Saves analysis scenario into SQLite database and sets the scenarioId collection variable for subsequent queries."
-      }
+      ]
     },
     {
-      "name": "8. Get Recent Saved Scenarios",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios?count=20",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios"
-          ],
-          "query": [
+      "name": "5. Scenario Persistence & Management",
+      "description": "Save, list, reload, compare, and delete evaluated loan scenarios.",
+      "item": [
+        {
+          "name": "7. Save Scenario to SQLite Database",
+          "event": [
             {
-              "key": "count",
-              "value": "20"
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.collectionVariables.set('scenarioId', jsonData.id);",
+                  "}"
+                ]
+              }
             }
-          ]
-        },
-        "description": "Lists recently saved loan scenarios with key indicators (Risk Score, DTI, Installment, Verdict)."
-      }
-    },
-    {
-      "name": "9. Get Saved Scenario by ID",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
           ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios",
-            "{{scenarioId}}"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Retrieves full saved analysis report JSON by GUID ID."
-      }
-    },
-    {
-      "name": "10. Download Saved Scenario PDF by ID",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/pdf?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios",
-            "{{scenarioId}}",
-            "pdf"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Generates and downloads PDF report from the persisted scenario in SQLite (English default, or Arabic if lang=ar)."
-      }
-    },
-    {
-      "name": "11. Get Egyptian Loan Products Catalog",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/catalog?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "catalog"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Retrieves catalog of commercial bank loans and consumer finance products in English (default) or Arabic (lang=ar)."
-      }
-    },
-    {
-      "name": "12. Compare Two Scenarios Side-by-Side",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"scenarioAName\": \"Banque Misr (36 Months @ 22.5%)\",\n  \"scenarioBName\": \"NBE (24 Months @ 21.5%)\",\n  \"language\": \"{{lang}}\",\n  \"scenarioA\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 22.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  },\n  \"scenarioB\": {\n    \"profile\": {\n      \"monthlyIncome\": 30000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 10000,\n      \"currentMonthlyInstallments\": 1000,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 32,\n      \"hasHealthInsurance\": true\n    },\n    \"loan\": {\n      \"principal\": 120000,\n      \"tenorMonths\": 24,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"adminFeePercentage\": 2.0,\n      \"earlyRepaymentFeePercentage\": 3.0\n    },\n    \"monteCarloIterations\": 1000\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/compare?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "compare"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Compares two arbitrary loan offers side-by-side, detailing differences in Monthly Installment, Total Interest Paid, Effective APR, DTI, Default Probability, Risk Score, and crowning the winning scenario with advisor rationale."
-      }
-    },
-    {
-      "name": "13. Compare Saved Scenarios by IDs",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios/compare?id1={{scenarioId}}&id2={{scenarioId}}&lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios",
-            "compare"
-          ],
-          "query": [
-            {
-              "key": "id1",
-              "value": "{{scenarioId}}"
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Marwan Tarek\",\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 14000,\n    \"currentMonthlyInstallments\": 3000,\n    \"savings\": 80000,\n    \"dependentsCount\": 1,\n    \"age\": 36,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 5000\n  },\n  \"loan\": {\n    \"principal\": 200000,\n    \"tenorMonths\": 48,\n    \"annualInterestRatePercentage\": 20.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.0\n  },\n  \"monteCarloIterations\": 5000\n}"
             },
-            {
-              "key": "id2",
-              "value": "{{scenarioId}}"
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/save-scenario?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "save-scenario"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
             },
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Loads two previously saved scenarios by GUID IDs from SQLite and performs a full side-by-side comparative analysis."
-      }
-    },
-    {
-      "name": "14. Calculate Borrowing Capacity & Affordability Ceiling",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+            "description": "Saves analysis scenario into SQLite database and sets the scenarioId collection variable for subsequent queries."
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"language\": \"{{lang}}\",\n  \"targetInterestRatePercentage\": 21.5,\n  \"targetTenorMonths\": 60,\n  \"calculationMethod\": 1,\n  \"profile\": {\n    \"monthlyIncome\": 35000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 12000,\n    \"currentMonthlyInstallments\": 3500,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 2000\n  }\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/borrowing-capacity?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "borrowing-capacity"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Calculates maximum loan amount and installment under Egyptian Central Bank (CBE) 50% legal limit vs 35% safe recommended ceiling. Factors in borrower retirement age and existing debt obligations."
-      }
-    },
-    {
-      "name": "15. Simulate Debt Buyout & Multi-Loan Consolidation",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "8. Get Recent Saved Scenarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios?count=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios"
+              ],
+              "query": [
+                {
+                  "key": "count",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Lists recently saved loan scenarios with key indicators (Risk Score, DTI, Installment, Verdict)."
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"language\": \"{{lang}}\",\n  \"profile\": {\n    \"monthlyIncome\": 40000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 14000,\n    \"currentMonthlyInstallments\": 16500,\n    \"savings\": 30000,\n    \"dependentsCount\": 1,\n    \"age\": 35,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"existingDebts\": [\n    {\n      \"debtName\": \"Credit Card A (Overdue / Minimum Due)\",\n      \"remainingPrincipal\": 75000,\n      \"monthlyInstallment\": 6000,\n      \"remainingMonths\": 24,\n      \"earlySettlementFeePercentage\": 0.0\n    },\n    {\n      \"debtName\": \"Personal Loan Bank X\",\n      \"remainingPrincipal\": 120000,\n      \"monthlyInstallment\": 7500,\n      \"remainingMonths\": 24,\n      \"earlySettlementFeePercentage\": 3.0\n    },\n    {\n      \"debtName\": \"Consumer Finance (ValU / aman)\",\n      \"remainingPrincipal\": 35000,\n      \"monthlyInstallment\": 3000,\n      \"remainingMonths\": 14,\n      \"earlySettlementFeePercentage\": 5.0\n    }\n  ],\n  \"targetOffer\": {\n    \"providerName\": \"National Bank of Egypt (NBE Debt Buyout Program)\",\n    \"annualInterestRatePercentage\": 21.0,\n    \"tenorMonths\": 60,\n    \"adminFeePercentage\": 1.0,\n    \"calculationMethod\": 1\n  }\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/debt-consolidation?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "debt-consolidation"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Simulates consolidation of multiple scattered high-interest debts into one unified bank buyout loan. Accounts for early settlement fees and computes monthly cash flow freed up."
-      }
-    },
-    {
-      "name": "16. Variable Rate & CBE Corridor Sensitivity Simulation",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "9. Get Saved Scenario by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios",
+                "{{scenarioId}}"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Retrieves full saved analysis report JSON by GUID ID."
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"language\": \"{{lang}}\",\n  \"loan\": {\n    \"principal\": 300000,\n    \"tenorMonths\": 60,\n    \"annualInterestRatePercentage\": 22.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 2,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  }\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/rate-sensitivity?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "rate-sensitivity"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Evaluates variable-rate loan sensitivity across CBE Corridor rate adjustments (+100 bps, +200 bps, +300 bps, -100 bps, -200 bps) and displays payment deltas and impact severity."
-      }
-    },
-    {
-      "name": "17. Export Amortization Schedule to Excel (.xlsx)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "13. Compare Saved Scenarios by IDs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios/compare?id1={{scenarioId}}&id2={{scenarioId}}&lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios",
+                "compare"
+              ],
+              "query": [
+                {
+                  "key": "id1",
+                  "value": "{{scenarioId}}"
+                },
+                {
+                  "key": "id2",
+                  "value": "{{scenarioId}}"
+                },
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Loads two previously saved scenarios by GUID IDs from SQLite and performs a full side-by-side comparative analysis."
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Tarek El-Sayed\",\n  \"language\": \"{{lang}}\",\n  \"loan\": {\n    \"principal\": 250000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  }\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/export-excel?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "export-excel"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Generates and downloads a professionally styled Excel spreadsheet (.xlsx) with bilingual headers, formatted numbers, and complete monthly amortization schedule."
-      }
-    },
-    {
-      "name": "18. Download Saved Scenario Excel by ID",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "10. Download Saved Scenario PDF by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/pdf?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios",
+                "{{scenarioId}}",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Generates and downloads PDF report from the persisted scenario in SQLite (English default, or Arabic if lang=ar)."
           }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/excel?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios",
-            "{{scenarioId}}",
-            "excel"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
         },
-        "description": "Generates and downloads an Excel spreadsheet (.xlsx) for a previously saved loan scenario by GUID ID."
-      }
-    },
-    {
-      "name": "19. Generate Personalized AI Narrative Advisor Briefing",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "18. Download Saved Scenario Excel by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/excel?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios",
+                "{{scenarioId}}",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Generates and downloads an Excel spreadsheet (.xlsx) for a previously saved loan scenario by GUID ID."
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"analysisRequest\": {\n    \"customerName\": \"Tarek El-Sayed\",\n    \"language\": \"{{lang}}\",\n    \"profile\": {\n      \"monthlyIncome\": 35000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 12000,\n      \"currentMonthlyInstallments\": 2500,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 33,\n      \"hasHealthInsurance\": true,\n      \"secondaryIncome\": 2000\n    },\n    \"loan\": {\n      \"principal\": 150000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"rateType\": 1,\n      \"adminFeePercentage\": 1.5,\n      \"earlyRepaymentFeePercentage\": 3.0,\n      \"latePaymentPenaltyPercentage\": 2.0\n    },\n    \"monteCarloIterations\": 5000\n  },\n  \"customQuestion\": \"هل تنصحني بزيادة مدة السداد لـ 4 سنين لتقليل القسط الشهري، ولا الفايدة الزيادة مش مستاهلة؟\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/ai-advice?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "ai-advice"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Calls the AI Financial Advisor (Gemini/Groq/OpenAI with automatic high-precision rule-based fallback). Synthesizes an empathetic, plain-language narrative briefing in Arabic or English with key strengths, vulnerabilities, step-by-step action plan, and Egyptian banking nuances."
-      }
-    },
-    {
-      "name": "20. Get Saved Scenario AI Narrative Advice by ID",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept-Language",
-            "value": "{{lang}}"
+        {
+          "name": "20. Get Saved Scenario AI Narrative Advice by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/ai-advice?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "scenarios",
+                "{{scenarioId}}",
+                "ai-advice"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Loads a saved scenario from SQLite and generates an on-demand AI narrative advisory briefing in Arabic or English."
           }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/loans/scenarios/{{scenarioId}}/ai-advice?lang={{lang}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "loans",
-            "scenarios",
-            "{{scenarioId}}",
-            "ai-advice"
-          ],
-          "query": [
-            {
-              "key": "lang",
-              "value": "{{lang}}"
-            }
-          ]
-        },
-        "description": "Loads a saved scenario from SQLite and generates an on-demand AI narrative advisory briefing in Arabic or English."
-      }
+        }
+      ]
     },
     {
-      "name": "Realistic Egyptian Scenarios (Ready-to-Test)",
+      "name": "6. Reports & AI Exports",
+      "description": "Vector PDF export, formatted Excel (.xlsx) workbooks, and standalone AI advisory narratives.",
+      "item": [
+        {
+          "name": "6. Export Comprehensive PDF Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Kareem Adel\",\n  \"profile\": {\n    \"monthlyIncome\": 28000,\n    \"stability\": 1,\n    \"fixedMonthlyExpenses\": 11000,\n    \"currentMonthlyInstallments\": 2000,\n    \"savings\": 60000,\n    \"dependentsCount\": 2,\n    \"age\": 34,\n    \"hasHealthInsurance\": true,\n    \"secondaryIncome\": 0\n  },\n  \"loan\": {\n    \"principal\": 150000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.5,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  },\n  \"monteCarloIterations\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/export-pdf?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "export-pdf"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Generates and streams a professional PDF financial report (English by default, or Arabic if lang=ar)."
+          }
+        },
+        {
+          "name": "17. Export Amortization Schedule to Excel (.xlsx)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Tarek El-Sayed\",\n  \"language\": \"{{lang}}\",\n  \"loan\": {\n    \"principal\": 250000,\n    \"tenorMonths\": 36,\n    \"annualInterestRatePercentage\": 21.0,\n    \"calculationMethod\": 1,\n    \"rateType\": 1,\n    \"adminFeePercentage\": 1.5,\n    \"earlyRepaymentFeePercentage\": 3.0,\n    \"latePaymentPenaltyPercentage\": 2.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/export-excel?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "export-excel"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Generates and downloads a professionally styled Excel spreadsheet (.xlsx) with bilingual headers, formatted numbers, and complete monthly amortization schedule."
+          }
+        },
+        {
+          "name": "19. Generate Personalized AI Narrative Advisor Briefing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "{{lang}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"analysisRequest\": {\n    \"customerName\": \"Tarek El-Sayed\",\n    \"language\": \"{{lang}}\",\n    \"profile\": {\n      \"monthlyIncome\": 35000,\n      \"stability\": 1,\n      \"fixedMonthlyExpenses\": 12000,\n      \"currentMonthlyInstallments\": 2500,\n      \"savings\": 60000,\n      \"dependentsCount\": 1,\n      \"age\": 33,\n      \"hasHealthInsurance\": true,\n      \"secondaryIncome\": 2000\n    },\n    \"loan\": {\n      \"principal\": 150000,\n      \"tenorMonths\": 36,\n      \"annualInterestRatePercentage\": 21.5,\n      \"calculationMethod\": 1,\n      \"rateType\": 1,\n      \"adminFeePercentage\": 1.5,\n      \"earlyRepaymentFeePercentage\": 3.0,\n      \"latePaymentPenaltyPercentage\": 2.0\n    },\n    \"monteCarloIterations\": 5000\n  },\n  \"customQuestion\": \"هل تنصحني بزيادة مدة السداد لـ 4 سنين لتقليل القسط الشهري، ولا الفايدة الزيادة مش مستاهلة؟\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/ai-advice?lang={{lang}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "ai-advice"
+              ],
+              "query": [
+                {
+                  "key": "lang",
+                  "value": "{{lang}}"
+                }
+              ]
+            },
+            "description": "Calls the AI Financial Advisor (Gemini/Groq/OpenAI with automatic high-precision rule-based fallback). Synthesizes an empathetic, plain-language narrative briefing in Arabic or English with key strengths, vulnerabilities, step-by-step action plan, and Egyptian banking nuances."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Realistic Egyptian Scenarios (Ready-to-Test)",
+      "description": "Real-world test scenarios reflecting typical Egyptian household incomes and borrowing requests.",
       "item": [
         {
           "name": "Scenario 1: Safe Profile - Stable Corporate Employee (Take Loan)",
