@@ -9,33 +9,6 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 **LoanLens** is a high-performance, enterprise-grade financial engineering and advisory engine tailored for the Egyptian retail banking and consumer finance ecosystem. It empowers consumers, loan officers, and fintech platforms to assess loan affordability, simulate economic shocks, run stochastic default simulations, and generate personalized advisory narratives powered by LLMs (Google Gemini & Groq).
-
----
-
-## Table of Contents
-
-- [Executive Overview](#-executive-overview)
-- [Architecture & Solution Design](#-architecture--solution-design)
-- [Core Mathematical & Financial Engines](#-core-mathematical--financial-engines)
-  - [1. Amortization & Effective APR Engine](#1-amortization--effective-apr-engine)
-  - [2. Regulatory Affordability & DTI Compliance](#2-regulatory-affordability--dti-compliance)
-  - [3. Health Insurance Multi-Engine Integration](#3-health-insurance-multi-engine-integration)
-  - [4. Deterministic Stress Testing (Crisis Simulation)](#4-deterministic-stress-testing-crisis-simulation)
-  - [5. Stochastic Monte Carlo Default Simulation](#5-stochastic-monte-carlo-default-simulation)
-  - [6. 0–100 Composite Risk Scoring & Decision Engine](#6-0100-composite-risk-scoring--decision-engine)
-  - [7. Borrowing Capacity & Retirement Ceiling Engine](#7-borrowing-capacity--retirement-ceiling-engine)
-  - [8. Debt Consolidation & Buyout Engine](#8-debt-consolidation--buyout-engine)
-  - [9. CBE Corridor Sensitivity Engine](#9-cbe-corridor-sensitivity-engine)
-  - [10. Live Egyptian Banking Market Rates & CBE Corridor](#10-live-egyptian-banking-market-rates--cbe-corridor)
-  - [11. AI Narrative Advisory Engine](#11-ai-narrative-advisory-engine)
-  - [12. Document & Spreadsheet Generation](#12-document--spreadsheet-generation)
-- [RESTful API Endpoints](#-restful-api-endpoints)
-- [Security & Production Hardening](#-security--production-hardening)
-- [Getting Started & Local Setup](#-getting-started--local-setup)
-- [Docker & Container Deployment](#-docker--container-deployment)
-- [Testing & Quality Assurance](#-testing--quality-assurance)
-- [CI/CD Pipeline](#-cicd-pipeline)
-
 ---
 
 ## Executive Overview
@@ -243,7 +216,7 @@ All endpoints support both `/api/v1/...` and `/api/...`.
 
 ---
 
-## 🔒 Security & Production Hardening
+## Security & Production Hardening
 
 - **Credential Isolation:** No plaintext API keys in configuration files. Secrets are managed via `.NET User Secrets` in development and Environment Variables in production.
 - **Built-in Rate Limiting:** Enforces `FixedWindowRateLimiter` (100 requests / minute) to prevent Denial-of-Service and LLM quota exhaustion.
@@ -327,5 +300,5 @@ The project includes an automated GitHub Actions pipeline (`.github/workflows/ci
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
